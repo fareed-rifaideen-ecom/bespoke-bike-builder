@@ -2,10 +2,12 @@
 /**
  * Registers shortcodes that can be pasted into any WordPress Page.
  *
- * [bbb_builder] now renders the "Build Type" step as clickable
- * tiles with a Next button. The remaining option groups are still
- * shown below as a plain list for now, and will become their own
- * interactive steps in the upcoming steps.
+ * [bbb_builder] now renders every option group as its own step in a
+ * one-step-at-a-time wizard. Each step is displayed as tiles or as
+ * a dropdown, depending on that group's display_type value in the
+ * database (this is exactly the admin-controlled setting described
+ * in our blueprint). Navigation between steps is handled by
+ * assets/js/builder.js.
  */
 
 // If this file is opened directly in a browser (not through WordPress), stop everything.
@@ -25,13 +27,7 @@ class BBB_Shortcodes {
 	}
 
 	/**
-	 * Loads our CSS and JavaScript files, but only once per page,
-	 * even if the shortcode were somehow used more than once.
-	 *
-	 * wp_enqueue_style() and wp_enqueue_script() are WordPress's
-	 * proper way of loading files - they avoid loading the same
-	 * file twice and let WordPress manage load order safely
-	 * alongside every other plugin and theme file already in use.
+	 * Loads our CSS and JavaScript files, but only once per page.
 	 */
 	private static function enqueue_assets() {
 
@@ -53,14 +49,14 @@ class BBB_Shortcodes {
 			BBB_PLUGIN_URL . 'assets/js/builder.js',
 			array(),
 			'1.0.0',
-			true // Load in the footer, after the page content already exists.
+			true
 		);
 
 		$already_loaded = true;
 	}
 
 	/**
-	 * Outputs the builder content for a given template.
+	 * Outputs the full step-by-step builder for a given template.
 	 */
 	public static function render_builder( $atts ) {
 
@@ -99,72 +95,70 @@ class BBB_Shortcodes {
 			ARRAY_A
 		);
 
-		// The first group (lowest sort_order) is "Build Type" - we treat
-		// it specially in this step. Everything else stays a plain list
-		// for now, until we build their interactive steps too.
-		$first_group       = ! empty( $groups ) ? $groups[0] : null;
-		$remaining_groups  = ! empty( $groups ) ? array_slice( $groups, 1 ) : array();
+		if ( empty( $groups ) ) {
+			return '<p>This build experience has no options configured yet.</p>';
+		}
+
+		$total_steps = count( $groups );
 
 		ob_start();
 		?>
 
-		<div class="bbb-builder-placeholder">
+		<div class="bbb-builder-placeholder" data-total-steps="<?php echo esc_attr( $total_steps ); ?>">
 
 			<h2><?php echo esc_html( $template['name'] ); ?></h2>
 
-			<?php if ( $first_group ) : ?>
+			<p class="bbb-progress">Step 1 of <?php echo esc_html( $total_steps ); ?></p>
+
+			<?php foreach ( $groups as $index => $group ) : ?>
 
 				<?php
-				$first_group_options = $wpdb->get_results(
+				$options = $wpdb->get_results(
 					$wpdb->prepare(
 						"SELECT * FROM {$options_table} WHERE group_id = %d AND is_active = 1 ORDER BY sort_order ASC",
-						$first_group['id']
+						$group['id']
 					),
 					ARRAY_A
 				);
+
+				$is_first_step = ( 0 === $index );
 				?>
 
-				<div class="bbb-step">
-					<h3><?php echo esc_html( $first_group['label'] ); ?></h3>
-
-					<div class="bbb-tile-group">
-						<?php foreach ( $first_group_options as $option ) : ?>
-							<div class="bbb-tile"><?php echo esc_html( $option['label'] ); ?></div>
-						<?php endforeach; ?>
-					</div>
-
-					<button type="button" class="bbb-next-button" disabled>Next</button>
-				</div>
-
-			<?php endif; ?>
-
-			<?php if ( ! empty( $remaining_groups ) ) : ?>
-
-				<hr />
-				<p><em>The remaining steps below are still shown as a plain list for now, and will become interactive in the next steps.</em></p>
-
-				<?php foreach ( $remaining_groups as $group ) : ?>
-
-					<?php
-					$options = $wpdb->get_results(
-						$wpdb->prepare(
-							"SELECT * FROM {$options_table} WHERE group_id = %d AND is_active = 1 ORDER BY sort_order ASC",
-							$group['id']
-						),
-						ARRAY_A
-					);
-					?>
+				<div class="bbb-step<?php echo $is_first_step ? ' bbb-step-active' : ''; ?>" data-step-index="<?php echo esc_attr( $index ); ?>">
 
 					<h3><?php echo esc_html( $group['label'] ); ?></h3>
-					<ul>
-						<?php foreach ( $options as $option ) : ?>
-							<li><?php echo esc_html( $option['label'] ); ?></li>
-						<?php endforeach; ?>
-					</ul>
 
-				<?php endforeach; ?>
+					<?php if ( 'dropdown' === $group['display_type'] ) : ?>
 
-			<?php endif; ?>
+						<select class="bbb-dropdown">
+							<option value="">Select an option</option>
+							<?php foreach ( $options as $option ) : ?>
+								<option value="<?php echo esc_attr( $option['label'] ); ?>">
+									<?php echo esc_html( $option['label'] ); ?>
+								</option>
+							<?php endforeach; ?>
+						</select>
+
+					<?php else : ?>
+
+						<div class="bbb-tile-group">
+							<?php foreach ( $options as $option ) : ?>
+								<div class="bbb-tile" data-value="<?php echo esc_attr( $option['label'] ); ?>">
+									<?php echo esc_html( $option['label'] ); ?>
+								</div>
+							<?php endforeach; ?>
+						</div>
+
+					<?php endif; ?>
+
+				</div>
+
+			<?php endforeach; ?>
+
+			<div class="bbb-nav">
+				<button type="button" class="bbb-back-button" style="display:none;">Back</button>
+				<button type="button" class="bbb-next-button" disabled>Next</button>
+			</div>
 
 		</div>
 

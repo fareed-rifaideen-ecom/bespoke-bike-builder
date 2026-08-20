@@ -1,54 +1,145 @@
 /**
- * Handles the click interaction for the Bespoke Bike Builder tiles.
+ * Runs the Bespoke Bike Builder step-by-step wizard.
  *
- * For now, this only handles the first step (Build Type). Selecting
- * a tile highlights it and enables the Next button. Clicking Next
- * currently just shows a simple confirmation message - the real
- * Step 2 (Frame Colour) will replace this in a future step.
+ * This handles moving between steps, remembering each step's
+ * selection, and enabling/disabling the Next button based on
+ * whether the currently visible step has a valid answer yet.
  */
 
-// We wait for the whole page to finish loading before running our code,
-// so we know all the tiles and buttons already exist on the page.
 document.addEventListener( 'DOMContentLoaded', function () {
 
-	// Find every tile inside every ".bbb-tile-group" on the page.
-	var tileGroups = document.querySelectorAll( '.bbb-tile-group' );
+	var wizard = document.querySelector( '.bbb-builder-placeholder' );
 
-	tileGroups.forEach( function ( group ) {
+	// If this page doesn't contain our shortcode, do nothing.
+	if ( ! wizard ) {
+		return;
+	}
 
-		var tiles = group.querySelectorAll( '.bbb-tile' );
+	var steps        = wizard.querySelectorAll( '.bbb-step' );
+	var progressText = wizard.querySelector( '.bbb-progress' );
+	var nextButton   = wizard.querySelector( '.bbb-next-button' );
+	var backButton   = wizard.querySelector( '.bbb-back-button' );
+	var totalSteps   = steps.length;
 
-		// The Next button is stored right after its tile group in the HTML.
-		var nextButton = group.parentElement.querySelector( '.bbb-next-button' );
+	// This keeps track of the customer's answer for every step,
+	// using the step's index number as the key, e.g. selections[0].
+	var selections = {};
+
+	var currentIndex = 0;
+
+	/**
+	 * Shows only the step matching "index" and hides every other one.
+	 * Also updates the progress text and the Back/Next button states.
+	 */
+	function showStep( index ) {
+
+		steps.forEach( function ( step, stepIndex ) {
+			if ( stepIndex === index ) {
+				step.classList.add( 'bbb-step-active' );
+			} else {
+				step.classList.remove( 'bbb-step-active' );
+			}
+		} );
+
+		progressText.textContent = 'Step ' + ( index + 1 ) + ' of ' + totalSteps;
+
+		// Hide the Back button on the very first step - there is
+		// nothing to go back to yet.
+		backButton.style.display = ( index === 0 ) ? 'none' : 'inline-block';
+
+		// If this step was already answered before (e.g. the customer
+		// clicked Back and is now looking at it again), Next should
+		// already be enabled.
+		nextButton.disabled = ! selections[ index ];
+	}
+
+	/**
+	 * Sets up click handling for a tile-based step.
+	 */
+	function setupTileStep( step, index ) {
+
+		var tiles = step.querySelectorAll( '.bbb-tile' );
 
 		tiles.forEach( function ( tile ) {
 
 			tile.addEventListener( 'click', function () {
 
-				// Remove the "selected" look from every tile in this group first.
 				tiles.forEach( function ( otherTile ) {
 					otherTile.classList.remove( 'bbb-tile-selected' );
 				} );
 
-				// Then mark only the one that was actually clicked.
 				tile.classList.add( 'bbb-tile-selected' );
 
-				// Now that something is selected, the Next button can be used.
-				if ( nextButton ) {
+				selections[ index ] = tile.dataset.value;
+
+				// Only enable Next if this tile's step is the one
+				// currently visible on screen.
+				if ( index === currentIndex ) {
 					nextButton.disabled = false;
-					nextButton.dataset.selectedLabel = tile.textContent.trim();
 				}
 			} );
 		} );
+	}
 
-		if ( nextButton ) {
-			nextButton.addEventListener( 'click', function () {
+	/**
+	 * Sets up change handling for a dropdown-based step.
+	 */
+	function setupDropdownStep( step, index ) {
 
-				// This is a temporary placeholder confirmation.
-				// In the next step, this will move the customer to the
-				// Frame Colour step instead of showing this message.
-				alert( 'You selected: ' + nextButton.dataset.selectedLabel );
-			} );
+		var dropdown = step.querySelector( '.bbb-dropdown' );
+
+		if ( ! dropdown ) {
+			return;
+		}
+
+		dropdown.addEventListener( 'change', function () {
+
+			if ( dropdown.value ) {
+				selections[ index ] = dropdown.value;
+			} else {
+				delete selections[ index ];
+			}
+
+			if ( index === currentIndex ) {
+				nextButton.disabled = ! selections[ index ];
+			}
+		} );
+	}
+
+	// Set up every step once, when the page first loads.
+	steps.forEach( function ( step, index ) {
+
+		if ( step.querySelector( '.bbb-dropdown' ) ) {
+			setupDropdownStep( step, index );
+		} else {
+			setupTileStep( step, index );
 		}
 	} );
+
+	nextButton.addEventListener( 'click', function () {
+
+		// If we are already on the last step, there is nothing further
+		// to move to yet - the real Review screen will replace this in
+		// the next step of development.
+		if ( currentIndex === totalSteps - 1 ) {
+			alert( 'All steps complete! The Review screen will be built next.' );
+			return;
+		}
+
+		currentIndex++;
+		showStep( currentIndex );
+	} );
+
+	backButton.addEventListener( 'click', function () {
+
+		if ( currentIndex === 0 ) {
+			return;
+		}
+
+		currentIndex--;
+		showStep( currentIndex );
+	} );
+
+	// Show the very first step when the page loads.
+	showStep( currentIndex );
 } );
