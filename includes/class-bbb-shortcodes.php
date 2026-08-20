@@ -41,14 +41,14 @@ class BBB_Shortcodes {
 			'bbb-builder-css',
 			BBB_PLUGIN_URL . 'assets/css/builder.css',
 			array(),
-			'1.0.0'
+			'1.1.0'
 		);
 
 		wp_enqueue_script(
 			'bbb-builder-js',
 			BBB_PLUGIN_URL . 'assets/js/builder.js',
 			array(),
-			'1.0.0',
+			'1.1.0',
 			true
 		);
 
