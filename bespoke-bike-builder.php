@@ -27,9 +27,13 @@ define( 'BBB_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 // This loads the file that contains our Activator class (the code that runs on activation).
 require_once BBB_PLUGIN_DIR . 'includes/class-bbb-activator.php';
 
+// This loads the file that adds our admin menu page.
+require_once BBB_PLUGIN_DIR . 'includes/class-bbb-admin.php';
+
 // This is the actual activation hook.
 // It tells WordPress: "When this plugin is activated, run BBB_Activator::activate()."
 register_activation_hook( __FILE__, array( 'BBB_Activator', 'activate' ) );
 
-// This plugin does not do anything else yet.
-// We will build its features step by step in the upcoming stages.
+// This starts up the admin menu page by calling its init() method.
+// We will explain what init() does inside class-bbb-admin.php.
+BBB_Admin::init();
