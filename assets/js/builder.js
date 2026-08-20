@@ -3,11 +3,10 @@
  * Review screen, the lead capture form, and the real save-to-database
  * submission via WordPress AJAX.
  *
- * This handles moving between steps, remembering each step's
- * selection (including each option's real database ID), enabling
- * or disabling the Next button, building the Review summary,
- * validating the Name/Email/Phone fields, and finally sending
- * everything to includes/class-bbb-ajax.php to be saved.
+ * As of Step 17, this also skips the Cockpit, Groupset, and Wheelset
+ * steps entirely whenever the customer picks "Frame Only" in the
+ * very first step (Build Type) - both while navigating and when
+ * building the Review summary and the final saved submission.
  */
 
 document.addEventListener( 'DOMContentLoaded', function () {
@@ -45,6 +44,11 @@ document.addEventListener( 'DOMContentLoaded', function () {
 	var reviewStepIndex   = totalSteps - 2;
 	var totalOptionSteps  = reviewStepIndex;
 
+	// These group labels are skipped entirely whenever the customer
+	// picks "Frame Only", since those parts do not apply to a
+	// frame-only purchase.
+	var skipLabelsWhenFrameOnly = [ 'Cockpit', 'Groupset', 'Wheelset' ];
+
 	// This keeps track of the customer's answer for every option step.
 	// Each entry stores both the option's real database ID (needed to
 	// save correctly) and its label (needed to display on the Review
@@ -52,6 +56,67 @@ document.addEventListener( 'DOMContentLoaded', function () {
 	var selections = {};
 
 	var currentIndex = 0;
+
+	/**
+	 * True if the customer picked "Frame Only" on the very first step
+	 * (Build Type).
+	 */
+	function isFrameOnly() {
+
+		return !! ( selections[ 0 ] && selections[ 0 ].label === 'Frame Only' );
+	}
+
+	/**
+	 * True if the option step at this index should be hidden entirely,
+	 * because the customer picked "Frame Only" and this step does not
+	 * apply to a frame-only purchase.
+	 */
+	function shouldSkipStep( index ) {
+
+		if ( index < 0 || index >= totalOptionSteps ) {
+			return false;
+		}
+
+		var label = steps[ index ].dataset.groupLabel;
+
+		return isFrameOnly() && ( skipLabelsWhenFrameOnly.indexOf( label ) !== -1 );
+	}
+
+	/**
+	 * Counts how many option steps are actually visible to the
+	 * customer right now, e.g. 3 instead of 6 when Frame Only is
+	 * selected. Used to keep the "Step X of Y" text accurate.
+	 */
+	function countVisibleOptionSteps() {
+
+		var count = 0;
+
+		for ( var i = 0; i < totalOptionSteps; i++ ) {
+			if ( ! shouldSkipStep( i ) ) {
+				count++;
+			}
+		}
+
+		return count;
+	}
+
+	/**
+	 * Works out which visible step number (1, 2, 3...) the step at
+	 * this index actually is, skipping over any hidden steps that
+	 * come before it.
+	 */
+	function getVisibleStepNumber( index ) {
+
+		var count = 0;
+
+		for ( var i = 0; i <= index; i++ ) {
+			if ( ! shouldSkipStep( i ) ) {
+				count++;
+			}
+		}
+
+		return count;
+	}
 
 	/**
 	 * Checks whether the Name, Email, and Phone fields are all
@@ -70,13 +135,18 @@ document.addEventListener( 'DOMContentLoaded', function () {
 
 	/**
 	 * Builds the Review screen's summary rows from every stored
-	 * selection, using each step's group label.
+	 * selection, using each step's group label. Steps that are
+	 * currently skipped (Frame Only) are left out entirely.
 	 */
 	function populateReview() {
 
 		var rowsHtml = '';
 
 		for ( var i = 0; i < totalOptionSteps; i++ ) {
+
+			if ( shouldSkipStep( i ) ) {
+				continue;
+			}
 
 			var step      = steps[ i ];
 			var label     = step.dataset.groupLabel;
@@ -128,13 +198,44 @@ document.addEventListener( 'DOMContentLoaded', function () {
 
 		} else {
 
-			progressText.textContent = 'Step ' + ( index + 1 ) + ' of ' + totalOptionSteps;
+			progressText.textContent = 'Step ' + getVisibleStepNumber( index ) + ' of ' + countVisibleOptionSteps();
 			nextButton.textContent   = 'Next';
 
 			// If this step was already answered before (e.g. the customer
 			// clicked Back and is now looking at it again), Next should
 			// already be enabled.
 			nextButton.disabled = ! selections[ index ];
+		}
+	}
+
+	/**
+	 * If the customer just switched to "Frame Only", any answers they
+	 * had already given for Cockpit, Groupset, or Wheelset no longer
+	 * apply and are cleared out, so they never get saved by mistake.
+	 */
+	function clearSkippedSelectionsIfNeeded() {
+
+		if ( ! isFrameOnly() ) {
+			return;
+		}
+
+		for ( var i = 0; i < totalOptionSteps; i++ ) {
+
+			if ( skipLabelsWhenFrameOnly.indexOf( steps[ i ].dataset.groupLabel ) === -1 ) {
+				continue;
+			}
+
+			delete selections[ i ];
+
+			var tilesInStep = steps[ i ].querySelectorAll( '.bbb-tile' );
+			tilesInStep.forEach( function ( tile ) {
+				tile.classList.remove( 'bbb-tile-selected' );
+			} );
+
+			var dropdownInStep = steps[ i ].querySelector( '.bbb-dropdown' );
+			if ( dropdownInStep ) {
+				dropdownInStep.value = '';
+			}
 		}
 	}
 
@@ -159,6 +260,12 @@ document.addEventListener( 'DOMContentLoaded', function () {
 					optionId: tile.dataset.optionId,
 					label: tile.dataset.value
 				};
+
+				// This is the Build Type step - check whether we now need
+				// to clear out any Cockpit/Groupset/Wheelset selections.
+				if ( index === 0 ) {
+					clearSkippedSelectionsIfNeeded();
+				}
 
 				// Only enable Next if this tile's step is the one
 				// currently visible on screen.
@@ -242,6 +349,10 @@ document.addEventListener( 'DOMContentLoaded', function () {
 		var optionsPayload = [];
 
 		for ( var i = 0; i < totalOptionSteps; i++ ) {
+
+			if ( shouldSkipStep( i ) ) {
+				continue;
+			}
 
 			var step      = steps[ i ];
 			var selection = selections[ i ];
@@ -328,7 +439,13 @@ document.addEventListener( 'DOMContentLoaded', function () {
 			return;
 		}
 
-		currentIndex++;
+		var nextIndex = currentIndex + 1;
+
+		while ( shouldSkipStep( nextIndex ) ) {
+			nextIndex++;
+		}
+
+		currentIndex = nextIndex;
 		showStep( currentIndex );
 	} );
 
@@ -338,7 +455,13 @@ document.addEventListener( 'DOMContentLoaded', function () {
 			return;
 		}
 
-		currentIndex--;
+		var prevIndex = currentIndex - 1;
+
+		while ( shouldSkipStep( prevIndex ) ) {
+			prevIndex--;
+		}
+
+		currentIndex = prevIndex;
 		showStep( currentIndex );
 	} );
 

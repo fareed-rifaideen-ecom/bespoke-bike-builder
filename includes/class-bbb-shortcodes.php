@@ -10,6 +10,11 @@
  * summary, the lead form validation, and the actual save-to-database
  * submission are all handled by assets/js/builder.js together with
  * includes/class-bbb-ajax.php.
+ *
+ * As of Step 17, assets/js/builder.js also skips the Cockpit,
+ * Groupset, and Wheelset steps entirely whenever the customer picks
+ * "Frame Only" in the very first step, since those parts do not
+ * apply to a frame-only purchase.
  */
 
 // If this file is opened directly in a browser (not through WordPress), stop everything.
@@ -43,14 +48,14 @@ class BBB_Shortcodes {
 			'bbb-builder-css',
 			BBB_PLUGIN_URL . 'assets/css/builder.css',
 			array(),
-			'1.4.0'
+			'1.5.0'
 		);
 
 		wp_enqueue_script(
 			'bbb-builder-js',
 			BBB_PLUGIN_URL . 'assets/js/builder.js',
 			array(),
-			'1.4.0',
+			'1.5.0',
 			true
 		);
 
