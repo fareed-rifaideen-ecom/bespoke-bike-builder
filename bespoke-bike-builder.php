@@ -30,10 +30,15 @@ require_once BBB_PLUGIN_DIR . 'includes/class-bbb-activator.php';
 // This loads the file that adds our admin menu page.
 require_once BBB_PLUGIN_DIR . 'includes/class-bbb-admin.php';
 
+// This loads the file that registers our [bbb_builder] shortcode.
+require_once BBB_PLUGIN_DIR . 'includes/class-bbb-shortcodes.php';
+
 // This is the actual activation hook.
 // It tells WordPress: "When this plugin is activated, run BBB_Activator::activate()."
 register_activation_hook( __FILE__, array( 'BBB_Activator', 'activate' ) );
 
 // This starts up the admin menu page by calling its init() method.
-// We will explain what init() does inside class-bbb-admin.php.
 BBB_Admin::init();
+
+// This starts up the shortcode feature by calling its init() method.
+BBB_Shortcodes::init();
