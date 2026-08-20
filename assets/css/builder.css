@@ -1,0 +1,53 @@
+/*
+ * Basic styles for the Bespoke Bike Builder customer-facing builder.
+ * This is intentionally simple for now - just enough to make tiles
+ * look clickable and show which one is selected. The full premium
+ * Pinarello Dark design will be added in a later step.
+ */
+
+.bbb-builder-placeholder {
+	max-width: 700px;
+}
+
+/* This is the row of tile buttons, e.g. "Complete Build" / "Frame Only". */
+.bbb-tile-group {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px;
+	margin-bottom: 20px;
+}
+
+/* Each individual clickable option. */
+.bbb-tile {
+	padding: 14px 20px;
+	border: 2px solid #cccccc;
+	border-radius: 6px;
+	background: #ffffff;
+	cursor: pointer;
+	font-size: 15px;
+	text-align: center;
+	min-width: 140px;
+}
+
+/* This class is added by JavaScript when the customer clicks a tile. */
+.bbb-tile.bbb-tile-selected {
+	border-color: #1e73be;
+	background: #eaf3fc;
+	font-weight: bold;
+}
+
+.bbb-next-button {
+	padding: 12px 24px;
+	background: #1e73be;
+	color: #ffffff;
+	border: none;
+	border-radius: 6px;
+	font-size: 15px;
+	cursor: pointer;
+}
+
+/* This is how the button looks while nothing is selected yet. */
+.bbb-next-button:disabled {
+	background: #cccccc;
+	cursor: not-allowed;
+}

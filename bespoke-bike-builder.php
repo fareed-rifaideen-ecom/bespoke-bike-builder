@@ -24,6 +24,11 @@ define( 'BBB_PLUGIN_FILE', __FILE__ );
 // This tells PHP where to find our other plugin files, so we can "require" them below.
 define( 'BBB_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 
+// This gives us the public web address of our plugin folder, e.g.
+// https://thecyclehub.com/wp-content/plugins/bespoke-bike-builder/
+// We need this to correctly load our CSS and JavaScript files in the browser.
+define( 'BBB_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
+
 // This loads the file that contains our Activator class (the code that runs on activation).
 require_once BBB_PLUGIN_DIR . 'includes/class-bbb-activator.php';
 

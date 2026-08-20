@@ -2,10 +2,10 @@
 /**
  * Registers shortcodes that can be pasted into any WordPress Page.
  *
- * For now, this only contains [bbb_builder], which displays a plain,
- * unstyled list of a build template's option groups and options.
- * This proves our database data can reach a real public page. Design
- * and interactivity will be added in the upcoming steps.
+ * [bbb_builder] now renders the "Build Type" step as clickable
+ * tiles with a Next button. The remaining option groups are still
+ * shown below as a plain list for now, and will become their own
+ * interactive steps in the upcoming steps.
  */
 
 // If this file is opened directly in a browser (not through WordPress), stop everything.
@@ -21,29 +21,57 @@ class BBB_Shortcodes {
 	 */
 	public static function init() {
 
-		// add_shortcode() tells WordPress: whenever [bbb_builder] appears
-		// inside a Page or Post's content, run render_builder() and use
-		// whatever it returns as the replacement content.
 		add_shortcode( 'bbb_builder', array( __CLASS__, 'render_builder' ) );
 	}
 
 	/**
-	 * Outputs the builder content for a given template.
+	 * Loads our CSS and JavaScript files, but only once per page,
+	 * even if the shortcode were somehow used more than once.
 	 *
-	 * @param array $atts Attributes passed inside the shortcode tag,
-	 *                     e.g. [bbb_builder template="dogma-f"]
-	 *                     gives us $atts['template'] = 'dogma-f'.
+	 * wp_enqueue_style() and wp_enqueue_script() are WordPress's
+	 * proper way of loading files - they avoid loading the same
+	 * file twice and let WordPress manage load order safely
+	 * alongside every other plugin and theme file already in use.
+	 */
+	private static function enqueue_assets() {
+
+		static $already_loaded = false;
+
+		if ( $already_loaded ) {
+			return;
+		}
+
+		wp_enqueue_style(
+			'bbb-builder-css',
+			BBB_PLUGIN_URL . 'assets/css/builder.css',
+			array(),
+			'1.0.0'
+		);
+
+		wp_enqueue_script(
+			'bbb-builder-js',
+			BBB_PLUGIN_URL . 'assets/js/builder.js',
+			array(),
+			'1.0.0',
+			true // Load in the footer, after the page content already exists.
+		);
+
+		$already_loaded = true;
+	}
+
+	/**
+	 * Outputs the builder content for a given template.
 	 */
 	public static function render_builder( $atts ) {
 
-		// shortcode_atts() safely merges the attributes someone typed
-		// with sensible defaults, in case they forget to type one.
 		$atts = shortcode_atts(
 			array(
 				'template' => 'dogma-f',
 			),
 			$atts
 		);
+
+		self::enqueue_assets();
 
 		global $wpdb;
 
@@ -59,8 +87,6 @@ class BBB_Shortcodes {
 			ARRAY_A
 		);
 
-		// If no matching, active template is found, show a simple message
-		// instead of breaking the page. This keeps things safe on a live site.
 		if ( ! $template ) {
 			return '<p>This build experience is not available right now.</p>';
 		}
@@ -73,39 +99,72 @@ class BBB_Shortcodes {
 			ARRAY_A
 		);
 
-		// ob_start() and ob_get_clean() let us build up a block of HTML
-		// using plain PHP/HTML mixed together, then capture it as text
-		// to return - shortcode functions must return their output,
-		// never print it directly with echo.
+		// The first group (lowest sort_order) is "Build Type" - we treat
+		// it specially in this step. Everything else stays a plain list
+		// for now, until we build their interactive steps too.
+		$first_group       = ! empty( $groups ) ? $groups[0] : null;
+		$remaining_groups  = ! empty( $groups ) ? array_slice( $groups, 1 ) : array();
+
 		ob_start();
 		?>
 
 		<div class="bbb-builder-placeholder">
 
 			<h2><?php echo esc_html( $template['name'] ); ?></h2>
-			<p>This is a temporary, unstyled preview. Design and step-by-step
-			   interaction will be added in the next steps.</p>
 
-			<?php foreach ( $groups as $group ) : ?>
+			<?php if ( $first_group ) : ?>
 
 				<?php
-				$options = $wpdb->get_results(
+				$first_group_options = $wpdb->get_results(
 					$wpdb->prepare(
 						"SELECT * FROM {$options_table} WHERE group_id = %d AND is_active = 1 ORDER BY sort_order ASC",
-						$group['id']
+						$first_group['id']
 					),
 					ARRAY_A
 				);
 				?>
 
-				<h3><?php echo esc_html( $group['label'] ); ?></h3>
-				<ul>
-					<?php foreach ( $options as $option ) : ?>
-						<li><?php echo esc_html( $option['label'] ); ?></li>
-					<?php endforeach; ?>
-				</ul>
+				<div class="bbb-step">
+					<h3><?php echo esc_html( $first_group['label'] ); ?></h3>
 
-			<?php endforeach; ?>
+					<div class="bbb-tile-group">
+						<?php foreach ( $first_group_options as $option ) : ?>
+							<div class="bbb-tile"><?php echo esc_html( $option['label'] ); ?></div>
+						<?php endforeach; ?>
+					</div>
+
+					<button type="button" class="bbb-next-button" disabled>Next</button>
+				</div>
+
+			<?php endif; ?>
+
+			<?php if ( ! empty( $remaining_groups ) ) : ?>
+
+				<hr />
+				<p><em>The remaining steps below are still shown as a plain list for now, and will become interactive in the next steps.</em></p>
+
+				<?php foreach ( $remaining_groups as $group ) : ?>
+
+					<?php
+					$options = $wpdb->get_results(
+						$wpdb->prepare(
+							"SELECT * FROM {$options_table} WHERE group_id = %d AND is_active = 1 ORDER BY sort_order ASC",
+							$group['id']
+						),
+						ARRAY_A
+					);
+					?>
+
+					<h3><?php echo esc_html( $group['label'] ); ?></h3>
+					<ul>
+						<?php foreach ( $options as $option ) : ?>
+							<li><?php echo esc_html( $option['label'] ); ?></li>
+						<?php endforeach; ?>
+					</ul>
+
+				<?php endforeach; ?>
+
+			<?php endif; ?>
 
 		</div>
 
