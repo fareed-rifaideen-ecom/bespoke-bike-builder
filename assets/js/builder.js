@@ -1,10 +1,11 @@
 /**
  * Runs the Bespoke Bike Builder step-by-step wizard, including the
- * final Review screen.
+ * Review screen and the final lead capture form.
  *
  * This handles moving between steps, remembering each step's
- * selection, enabling/disabling the Next button, and building the
- * Review summary right before the customer confirms their build.
+ * selection, enabling/disabling the Next button, building the
+ * Review summary, and validating the Name/Email/Phone fields
+ * before allowing submission.
  */
 
 document.addEventListener( 'DOMContentLoaded', function () {
@@ -16,22 +17,43 @@ document.addEventListener( 'DOMContentLoaded', function () {
 		return;
 	}
 
-	var steps          = wizard.querySelectorAll( '.bbb-step' );
-	var progressText   = wizard.querySelector( '.bbb-progress' );
-	var nextButton     = wizard.querySelector( '.bbb-next-button' );
-	var backButton     = wizard.querySelector( '.bbb-back-button' );
-	var reviewContent  = wizard.querySelector( '.bbb-review-content' );
+	var steps         = wizard.querySelectorAll( '.bbb-step' );
+	var progressText  = wizard.querySelector( '.bbb-progress' );
+	var nextButton    = wizard.querySelector( '.bbb-next-button' );
+	var backButton    = wizard.querySelector( '.bbb-back-button' );
+	var reviewContent = wizard.querySelector( '.bbb-review-content' );
 
-	// steps includes every option group PLUS the Review step at the end.
-	var totalSteps      = steps.length;
-	var reviewStepIndex = totalSteps - 1;
-	var totalOptionSteps = reviewStepIndex;
+	var nameInput  = wizard.querySelector( '#bbb-lead-name' );
+	var emailInput = wizard.querySelector( '#bbb-lead-email' );
+	var phoneInput = wizard.querySelector( '#bbb-lead-phone' );
+
+	// steps includes every option group, PLUS the Review step,
+	// PLUS the lead capture step - in that order.
+	var totalSteps        = steps.length;
+	var leadStepIndex      = totalSteps - 1;
+	var reviewStepIndex    = totalSteps - 2;
+	var totalOptionSteps   = reviewStepIndex;
 
 	// This keeps track of the customer's answer for every option step,
 	// using the step's index number as the key, e.g. selections[0].
 	var selections = {};
 
 	var currentIndex = 0;
+
+	/**
+	 * Checks whether the Name, Email, and Phone fields are all
+	 * filled in, and that the email looks like a valid address.
+	 */
+	function isLeadFormValid() {
+
+		var name  = nameInput.value.trim();
+		var email = emailInput.value.trim();
+		var phone = phoneInput.value.trim();
+
+		var emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+		return ( name !== '' ) && emailPattern.test( email ) && ( phone !== '' );
+	}
 
 	/**
 	 * Builds the Review screen's summary rows from every stored
@@ -74,7 +96,13 @@ document.addEventListener( 'DOMContentLoaded', function () {
 		// nothing to go back to yet.
 		backButton.style.display = ( index === 0 ) ? 'none' : 'inline-block';
 
-		if ( index === reviewStepIndex ) {
+		if ( index === leadStepIndex ) {
+
+			progressText.textContent = 'Your Details';
+			nextButton.textContent   = 'Submit Build Request';
+			nextButton.disabled      = ! isLeadFormValid();
+
+		} else if ( index === reviewStepIndex ) {
 
 			progressText.textContent = 'Review Your Build';
 			nextButton.textContent   = 'Confirm & Continue';
@@ -150,8 +178,8 @@ document.addEventListener( 'DOMContentLoaded', function () {
 	}
 
 	// Set up every option step once, when the page first loads.
-	// The Review step (the last one) has no tiles or dropdown, so it
-	// is simply skipped here.
+	// The Review and lead capture steps (the last two) have no tiles
+	// or dropdown, so they are simply skipped here.
 	for ( var i = 0; i < totalOptionSteps; i++ ) {
 
 		var step = steps[ i ];
@@ -163,13 +191,30 @@ document.addEventListener( 'DOMContentLoaded', function () {
 		}
 	}
 
+	// Re-check the lead form's validity every time the customer types
+	// in any of the three fields, but only while that step is visible.
+	[ nameInput, emailInput, phoneInput ].forEach( function ( field ) {
+
+		field.addEventListener( 'input', function () {
+
+			if ( currentIndex === leadStepIndex ) {
+				nextButton.disabled = ! isLeadFormValid();
+			}
+		} );
+	} );
+
 	nextButton.addEventListener( 'click', function () {
 
-		// If we are already on the Review screen, this is the final
-		// confirmation click. The real lead-capture form will replace
-		// this placeholder in a later step.
-		if ( currentIndex === reviewStepIndex ) {
-			alert( 'This is a placeholder - the lead capture form will be built next!' );
+		// If we are already on the lead capture step, this is the real
+		// submission click. The actual database save logic will replace
+		// this placeholder in the next step of development.
+		if ( currentIndex === leadStepIndex ) {
+
+			if ( ! isLeadFormValid() ) {
+				return;
+			}
+
+			alert( 'Thanks! Your build request has been captured. Saving it to our system will be built next.' );
 			return;
 		}
 

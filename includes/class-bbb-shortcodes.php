@@ -3,11 +3,12 @@
  * Registers shortcodes that can be pasted into any WordPress Page.
  *
  * [bbb_builder] renders every option group as its own step in a
- * one-step-at-a-time wizard, followed by a final Review step that
- * lists every selection the customer made. Each option step is
+ * one-step-at-a-time wizard, followed by a Review step and finally
+ * a lead capture step (Name, Email, Phone). Each option step is
  * displayed as tiles or as a dropdown, depending on that group's
- * display_type value in the database. Navigation and the Review
- * summary are both handled by assets/js/builder.js.
+ * display_type value in the database. Navigation, the Review
+ * summary, and the lead form validation are all handled by
+ * assets/js/builder.js.
  */
 
 // If this file is opened directly in a browser (not through WordPress), stop everything.
@@ -41,14 +42,14 @@ class BBB_Shortcodes {
 			'bbb-builder-css',
 			BBB_PLUGIN_URL . 'assets/css/builder.css',
 			array(),
-			'1.2.0'
+			'1.3.0'
 		);
 
 		wp_enqueue_script(
 			'bbb-builder-js',
 			BBB_PLUGIN_URL . 'assets/js/builder.js',
 			array(),
-			'1.2.0',
+			'1.3.0',
 			true
 		);
 
@@ -160,6 +161,27 @@ class BBB_Shortcodes {
 				<h3>Review Your Build</h3>
 
 				<div class="bbb-review-content"></div>
+
+			</div>
+
+			<div class="bbb-step bbb-lead-step" data-step-index="<?php echo esc_attr( $total_option_steps + 1 ); ?>">
+
+				<h3>Your Details</h3>
+
+				<div class="bbb-lead-field">
+					<label for="bbb-lead-name">Full Name</label>
+					<input type="text" id="bbb-lead-name" class="bbb-lead-input" placeholder="Your full name">
+				</div>
+
+				<div class="bbb-lead-field">
+					<label for="bbb-lead-email">Email Address</label>
+					<input type="email" id="bbb-lead-email" class="bbb-lead-input" placeholder="you@example.com">
+				</div>
+
+				<div class="bbb-lead-field">
+					<label for="bbb-lead-phone">Phone Number</label>
+					<input type="tel" id="bbb-lead-phone" class="bbb-lead-input" placeholder="+971 50 000 0000">
+				</div>
 
 			</div>
 

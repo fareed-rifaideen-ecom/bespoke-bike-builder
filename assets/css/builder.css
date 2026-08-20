@@ -1,8 +1,9 @@
 /*
  * Basic styles for the Bespoke Bike Builder customer-facing builder.
  * This is intentionally simple for now - just enough to run a real
- * one-step-at-a-time wizard plus a Review screen. The full premium
- * Pinarello Dark design will be added in a later step.
+ * one-step-at-a-time wizard, a Review screen, and a lead capture
+ * form. The full premium Pinarello Dark design will be added in a
+ * later step.
  */
 
 .bbb-builder-placeholder {
@@ -84,6 +85,26 @@
 
 .bbb-review-value {
 	color: #1e73be;
+}
+
+.bbb-lead-field {
+	margin-bottom: 18px;
+}
+
+.bbb-lead-field label {
+	display: block;
+	font-weight: bold;
+	color: #333333;
+	margin-bottom: 6px;
+}
+
+.bbb-lead-input {
+	width: 100%;
+	padding: 10px 14px;
+	font-size: 15px;
+	border: 2px solid #cccccc;
+	border-radius: 6px;
+	box-sizing: border-box;
 }
 
 .bbb-nav {
