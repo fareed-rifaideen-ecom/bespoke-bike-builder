@@ -1,9 +1,10 @@
 /**
- * Runs the Bespoke Bike Builder step-by-step wizard.
+ * Runs the Bespoke Bike Builder step-by-step wizard, including the
+ * final Review screen.
  *
  * This handles moving between steps, remembering each step's
- * selection, and enabling/disabling the Next button based on
- * whether the currently visible step has a valid answer yet.
+ * selection, enabling/disabling the Next button, and building the
+ * Review summary right before the customer confirms their build.
  */
 
 document.addEventListener( 'DOMContentLoaded', function () {
@@ -15,17 +16,45 @@ document.addEventListener( 'DOMContentLoaded', function () {
 		return;
 	}
 
-	var steps        = wizard.querySelectorAll( '.bbb-step' );
-	var progressText = wizard.querySelector( '.bbb-progress' );
-	var nextButton   = wizard.querySelector( '.bbb-next-button' );
-	var backButton   = wizard.querySelector( '.bbb-back-button' );
-	var totalSteps   = steps.length;
+	var steps          = wizard.querySelectorAll( '.bbb-step' );
+	var progressText   = wizard.querySelector( '.bbb-progress' );
+	var nextButton     = wizard.querySelector( '.bbb-next-button' );
+	var backButton     = wizard.querySelector( '.bbb-back-button' );
+	var reviewContent  = wizard.querySelector( '.bbb-review-content' );
 
-	// This keeps track of the customer's answer for every step,
+	// steps includes every option group PLUS the Review step at the end.
+	var totalSteps      = steps.length;
+	var reviewStepIndex = totalSteps - 1;
+	var totalOptionSteps = reviewStepIndex;
+
+	// This keeps track of the customer's answer for every option step,
 	// using the step's index number as the key, e.g. selections[0].
 	var selections = {};
 
 	var currentIndex = 0;
+
+	/**
+	 * Builds the Review screen's summary rows from every stored
+	 * selection, using each step's group label.
+	 */
+	function populateReview() {
+
+		var rowsHtml = '';
+
+		for ( var i = 0; i < totalOptionSteps; i++ ) {
+
+			var step  = steps[ i ];
+			var label = step.dataset.groupLabel;
+			var value = selections[ i ] ? selections[ i ] : 'Not selected';
+
+			rowsHtml += '<div class="bbb-review-row">' +
+				'<span class="bbb-review-label">' + label + '</span>' +
+				'<span class="bbb-review-value">' + value + '</span>' +
+				'</div>';
+		}
+
+		reviewContent.innerHTML = rowsHtml;
+	}
 
 	/**
 	 * Shows only the step matching "index" and hides every other one.
@@ -41,16 +70,30 @@ document.addEventListener( 'DOMContentLoaded', function () {
 			}
 		} );
 
-		progressText.textContent = 'Step ' + ( index + 1 ) + ' of ' + totalSteps;
-
 		// Hide the Back button on the very first step - there is
 		// nothing to go back to yet.
 		backButton.style.display = ( index === 0 ) ? 'none' : 'inline-block';
 
-		// If this step was already answered before (e.g. the customer
-		// clicked Back and is now looking at it again), Next should
-		// already be enabled.
-		nextButton.disabled = ! selections[ index ];
+		if ( index === reviewStepIndex ) {
+
+			progressText.textContent = 'Review Your Build';
+			nextButton.textContent   = 'Confirm & Continue';
+			// The Review screen has nothing new to select, so Next is
+			// always available here.
+			nextButton.disabled      = false;
+
+			populateReview();
+
+		} else {
+
+			progressText.textContent = 'Step ' + ( index + 1 ) + ' of ' + totalOptionSteps;
+			nextButton.textContent   = 'Next';
+
+			// If this step was already answered before (e.g. the customer
+			// clicked Back and is now looking at it again), Next should
+			// already be enabled.
+			nextButton.disabled = ! selections[ index ];
+		}
 	}
 
 	/**
@@ -106,23 +149,27 @@ document.addEventListener( 'DOMContentLoaded', function () {
 		} );
 	}
 
-	// Set up every step once, when the page first loads.
-	steps.forEach( function ( step, index ) {
+	// Set up every option step once, when the page first loads.
+	// The Review step (the last one) has no tiles or dropdown, so it
+	// is simply skipped here.
+	for ( var i = 0; i < totalOptionSteps; i++ ) {
+
+		var step = steps[ i ];
 
 		if ( step.querySelector( '.bbb-dropdown' ) ) {
-			setupDropdownStep( step, index );
+			setupDropdownStep( step, i );
 		} else {
-			setupTileStep( step, index );
+			setupTileStep( step, i );
 		}
-	} );
+	}
 
 	nextButton.addEventListener( 'click', function () {
 
-		// If we are already on the last step, there is nothing further
-		// to move to yet - the real Review screen will replace this in
-		// the next step of development.
-		if ( currentIndex === totalSteps - 1 ) {
-			alert( 'All steps complete! The Review screen will be built next.' );
+		// If we are already on the Review screen, this is the final
+		// confirmation click. The real lead-capture form will replace
+		// this placeholder in a later step.
+		if ( currentIndex === reviewStepIndex ) {
+			alert( 'This is a placeholder - the lead capture form will be built next!' );
 			return;
 		}
 

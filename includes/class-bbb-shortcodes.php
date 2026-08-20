@@ -2,12 +2,12 @@
 /**
  * Registers shortcodes that can be pasted into any WordPress Page.
  *
- * [bbb_builder] now renders every option group as its own step in a
- * one-step-at-a-time wizard. Each step is displayed as tiles or as
- * a dropdown, depending on that group's display_type value in the
- * database (this is exactly the admin-controlled setting described
- * in our blueprint). Navigation between steps is handled by
- * assets/js/builder.js.
+ * [bbb_builder] renders every option group as its own step in a
+ * one-step-at-a-time wizard, followed by a final Review step that
+ * lists every selection the customer made. Each option step is
+ * displayed as tiles or as a dropdown, depending on that group's
+ * display_type value in the database. Navigation and the Review
+ * summary are both handled by assets/js/builder.js.
  */
 
 // If this file is opened directly in a browser (not through WordPress), stop everything.
@@ -41,14 +41,14 @@ class BBB_Shortcodes {
 			'bbb-builder-css',
 			BBB_PLUGIN_URL . 'assets/css/builder.css',
 			array(),
-			'1.1.0'
+			'1.2.0'
 		);
 
 		wp_enqueue_script(
 			'bbb-builder-js',
 			BBB_PLUGIN_URL . 'assets/js/builder.js',
 			array(),
-			'1.1.0',
+			'1.2.0',
 			true
 		);
 
@@ -99,16 +99,16 @@ class BBB_Shortcodes {
 			return '<p>This build experience has no options configured yet.</p>';
 		}
 
-		$total_steps = count( $groups );
+		$total_option_steps = count( $groups );
 
 		ob_start();
 		?>
 
-		<div class="bbb-builder-placeholder" data-total-steps="<?php echo esc_attr( $total_steps ); ?>">
+		<div class="bbb-builder-placeholder" data-total-option-steps="<?php echo esc_attr( $total_option_steps ); ?>">
 
 			<h2><?php echo esc_html( $template['name'] ); ?></h2>
 
-			<p class="bbb-progress">Step 1 of <?php echo esc_html( $total_steps ); ?></p>
+			<p class="bbb-progress">Step 1 of <?php echo esc_html( $total_option_steps ); ?></p>
 
 			<?php foreach ( $groups as $index => $group ) : ?>
 
@@ -124,7 +124,7 @@ class BBB_Shortcodes {
 				$is_first_step = ( 0 === $index );
 				?>
 
-				<div class="bbb-step<?php echo $is_first_step ? ' bbb-step-active' : ''; ?>" data-step-index="<?php echo esc_attr( $index ); ?>">
+				<div class="bbb-step<?php echo $is_first_step ? ' bbb-step-active' : ''; ?>" data-step-index="<?php echo esc_attr( $index ); ?>" data-group-label="<?php echo esc_attr( $group['label'] ); ?>">
 
 					<h3><?php echo esc_html( $group['label'] ); ?></h3>
 
@@ -154,6 +154,14 @@ class BBB_Shortcodes {
 				</div>
 
 			<?php endforeach; ?>
+
+			<div class="bbb-step bbb-review-step" data-step-index="<?php echo esc_attr( $total_option_steps ); ?>">
+
+				<h3>Review Your Build</h3>
+
+				<div class="bbb-review-content"></div>
+
+			</div>
 
 			<div class="bbb-nav">
 				<button type="button" class="bbb-back-button" style="display:none;">Back</button>
