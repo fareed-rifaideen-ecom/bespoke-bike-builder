@@ -1,11 +1,13 @@
 <?php
 /**
- * Handles the wp-admin menu page for Bespoke Bike Builder.
+ * Handles the wp-admin menu pages for Bespoke Bike Builder.
  *
- * This page lists every row in the wp_bbb_templates table, and now
- * also shows the Dogma F template's option groups and their options,
- * so we can confirm all of our Step 8 tables and seed data are
- * correct before we start building the customer-facing pages.
+ * This file adds two pages:
+ * - "Bespoke Bike Builder" - the original page confirming our build
+ *   templates data exists (from Step 7).
+ * - "Build Requests" - a real working list of every customer build
+ *   submission, where staff can review the full build spec and
+ *   update each request's status.
  */
 
 // If this file is opened directly in a browser (not through WordPress), stop everything.
@@ -16,19 +18,29 @@ if ( ! defined( 'ABSPATH' ) ) {
 class BBB_Admin {
 
 	/**
-	 * This function "switches on" the admin page feature.
+	 * The list of valid statuses a build request can move through.
+	 */
+	private static $statuses = array( 'new', 'contacted', 'confirmed', 'completed' );
+
+	/**
+	 * This function "switches on" the admin pages feature.
 	 * It is called once, from the main plugin file.
 	 */
 	public static function init() {
 
-		add_action( 'admin_menu', array( __CLASS__, 'register_menu_page' ) );
+		add_action( 'admin_menu', array( __CLASS__, 'register_menu_pages' ) );
+
+		// admin_post_* handles form submissions sent to wp-admin/admin-post.php.
+		// This is WordPress's standard way of safely handling a normal form
+		// submission (not AJAX) from inside wp-admin.
+		add_action( 'admin_post_bbb_update_status', array( __CLASS__, 'handle_update_status' ) );
 	}
 
 	/**
-	 * Adds "Bespoke Bike Builder" as a new top-level menu item
-	 * in the wp-admin sidebar.
+	 * Adds "Bespoke Bike Builder" as a top-level menu item, plus a
+	 * "Build Requests" page underneath it.
 	 */
-	public static function register_menu_page() {
+	public static function register_menu_pages() {
 
 		add_menu_page(
 			'Bespoke Bike Builder',
@@ -39,27 +51,32 @@ class BBB_Admin {
 			'dashicons-palmtree',
 			56
 		);
+
+		add_submenu_page(
+			'bbb-dashboard',              // Parent menu slug - keeps this nested under the page above.
+			'Build Requests',             // Page title
+			'Build Requests',             // Menu title
+			'manage_options',             // Required capability
+			'bbb-submissions',            // Unique menu slug
+			array( __CLASS__, 'render_submissions_page' )
+		);
 	}
 
 	/**
-	 * Displays the actual content of the admin page.
+	 * Displays the original data-check page from Step 7.
 	 */
 	public static function render_dashboard_page() {
 
 		global $wpdb;
 
-		$templates_table = $wpdb->prefix . 'bbb_templates';
-		$groups_table    = $wpdb->prefix . 'bbb_option_groups';
-		$options_table   = $wpdb->prefix . 'bbb_options';
+		$table_name = $wpdb->prefix . 'bbb_templates';
 
-		$templates = $wpdb->get_results( "SELECT * FROM {$templates_table}", ARRAY_A );
+		$templates = $wpdb->get_results( "SELECT * FROM {$table_name}", ARRAY_A );
 
 		?>
 		<div class="wrap">
 			<h1>Bespoke Bike Builder</h1>
-			<p>This page confirms the plugin's database tables and initial data were created successfully.</p>
-
-			<h2>Build Templates</h2>
+			<p>This page confirms the plugin's database table and initial data were created successfully.</p>
 
 			<?php if ( empty( $templates ) ) : ?>
 
@@ -86,86 +103,114 @@ class BBB_Admin {
 								<td><?php echo esc_html( $template['slug'] ); ?></td>
 								<td><?php echo $template['is_active'] ? 'Yes' : 'No'; ?></td>
 							</tr>
-
-							<?php
-							// For each template, also show its option groups and options.
-							// This is the part that is new in Step 9.
-							$groups = $wpdb->get_results(
-								$wpdb->prepare(
-									"SELECT * FROM {$groups_table} WHERE template_id = %d ORDER BY sort_order ASC",
-									$template['id']
-								),
-								ARRAY_A
-							);
-							?>
-
 						<?php endforeach; ?>
 					</tbody>
 				</table>
 
 			<?php endif; ?>
 
-			<h2>Dogma F &mdash; Option Groups</h2>
+		</div>
+		<?php
+	}
 
-			<?php
-			// We already know Dogma F's template ID from the loop above,
-			// but to keep this section simple and independent, we look
-			// it up again directly by its slug.
-			$dogma_f_id = $wpdb->get_var(
-				$wpdb->prepare(
-					"SELECT id FROM {$templates_table} WHERE slug = %s",
-					'dogma-f'
-				)
-			);
+	/**
+	 * Displays every customer build request, most recent first, with
+	 * the full build spec for each one and a status dropdown.
+	 */
+	public static function render_submissions_page() {
 
-			$groups = array();
+		global $wpdb;
 
-			if ( $dogma_f_id ) {
-				$groups = $wpdb->get_results(
-					$wpdb->prepare(
-						"SELECT * FROM {$groups_table} WHERE template_id = %d ORDER BY sort_order ASC",
-						$dogma_f_id
-					),
-					ARRAY_A
-				);
-			}
-			?>
+		$submissions_table      = $wpdb->prefix . 'bbb_submissions';
+		$submission_items_table = $wpdb->prefix . 'bbb_submission_items';
+		$groups_table           = $wpdb->prefix . 'bbb_option_groups';
+		$options_table          = $wpdb->prefix . 'bbb_options';
+		$templates_table        = $wpdb->prefix . 'bbb_templates';
 
-			<?php if ( empty( $groups ) ) : ?>
+		$submissions = $wpdb->get_results(
+			"SELECT s.*, t.name AS template_name
+			FROM {$submissions_table} s
+			LEFT JOIN {$templates_table} t ON t.id = s.template_id
+			ORDER BY s.created_at DESC",
+			ARRAY_A
+		);
 
-				<p><strong>No option groups found yet.</strong> Something may have gone wrong in Step 8 - let's check together.</p>
+		?>
+		<div class="wrap">
+			<h1>Build Requests</h1>
+
+			<?php if ( isset( $_GET['updated'] ) ) : ?>
+				<div class="notice notice-success is-dismissible"><p>Status updated.</p></div>
+			<?php endif; ?>
+
+			<?php if ( empty( $submissions ) ) : ?>
+
+				<p>No build requests have been submitted yet.</p>
 
 			<?php else : ?>
 
 				<table class="widefat striped">
 					<thead>
 						<tr>
-							<th>Group</th>
-							<th>Display Type</th>
-							<th>Options</th>
+							<th>Reference</th>
+							<th>Build</th>
+							<th>Customer</th>
+							<th>Contact</th>
+							<th>Build Details</th>
+							<th>Status</th>
+							<th>Submitted</th>
 						</tr>
 					</thead>
 					<tbody>
-						<?php foreach ( $groups as $group ) : ?>
+						<?php foreach ( $submissions as $submission ) : ?>
 
 							<?php
-							// For each group, fetch its options and join their
-							// labels into one simple comma-separated line.
-							$options = $wpdb->get_results(
+							$items = $wpdb->get_results(
 								$wpdb->prepare(
-									"SELECT label FROM {$options_table} WHERE group_id = %d ORDER BY sort_order ASC",
-									$group['id']
+									"SELECT g.label AS group_label, o.label AS option_label
+									FROM {$submission_items_table} si
+									LEFT JOIN {$groups_table} g ON g.id = si.group_id
+									LEFT JOIN {$options_table} o ON o.id = si.option_id
+									WHERE si.submission_id = %d",
+									$submission['id']
 								),
 								ARRAY_A
 							);
-
-							$option_labels = wp_list_pluck( $options, 'label' );
 							?>
 
 							<tr>
-								<td><?php echo esc_html( $group['label'] ); ?></td>
-								<td><?php echo esc_html( $group['display_type'] ); ?></td>
-								<td><?php echo esc_html( implode( ', ', $option_labels ) ); ?></td>
+								<td><strong><?php echo esc_html( $submission['reference_code'] ); ?></strong></td>
+								<td><?php echo esc_html( $submission['template_name'] ); ?></td>
+								<td><?php echo esc_html( $submission['customer_name'] ); ?></td>
+								<td>
+									<?php echo esc_html( $submission['customer_email'] ); ?><br>
+									<?php echo esc_html( $submission['customer_whatsapp'] ); ?>
+								</td>
+								<td>
+									<details>
+										<summary>View build</summary>
+										<ul style="margin: 8px 0 0 0;">
+											<?php foreach ( $items as $item ) : ?>
+												<li><strong><?php echo esc_html( $item['group_label'] ); ?>:</strong> <?php echo esc_html( $item['option_label'] ); ?></li>
+											<?php endforeach; ?>
+										</ul>
+									</details>
+								</td>
+								<td>
+									<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+										<input type="hidden" name="action" value="bbb_update_status">
+										<input type="hidden" name="submission_id" value="<?php echo esc_attr( $submission['id'] ); ?>">
+										<?php wp_nonce_field( 'bbb_update_status_' . $submission['id'] ); ?>
+										<select name="status" onchange="this.form.submit()">
+											<?php foreach ( self::$statuses as $status ) : ?>
+												<option value="<?php echo esc_attr( $status ); ?>" <?php selected( $submission['status'], $status ); ?>>
+													<?php echo esc_html( ucfirst( $status ) ); ?>
+												</option>
+											<?php endforeach; ?>
+										</select>
+									</form>
+								</td>
+								<td><?php echo esc_html( $submission['created_at'] ); ?></td>
 							</tr>
 
 						<?php endforeach; ?>
@@ -176,5 +221,41 @@ class BBB_Admin {
 
 		</div>
 		<?php
+	}
+
+	/**
+	 * Handles the status dropdown's form submission, updates the
+	 * matching row, then redirects back to the Build Requests page.
+	 */
+	public static function handle_update_status() {
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( 'You do not have permission to do this.' );
+		}
+
+		$submission_id = isset( $_POST['submission_id'] ) ? absint( $_POST['submission_id'] ) : 0;
+		$new_status    = isset( $_POST['status'] ) ? sanitize_text_field( wp_unslash( $_POST['status'] ) ) : '';
+
+		check_admin_referer( 'bbb_update_status_' . $submission_id );
+
+		if ( ! $submission_id || ! in_array( $new_status, self::$statuses, true ) ) {
+			wp_die( 'Invalid request.' );
+		}
+
+		global $wpdb;
+
+		$submissions_table = $wpdb->prefix . 'bbb_submissions';
+
+		$wpdb->update(
+			$submissions_table,
+			array(
+				'status'     => $new_status,
+				'updated_at' => current_time( 'mysql' ),
+			),
+			array( 'id' => $submission_id )
+		);
+
+		wp_safe_redirect( admin_url( 'admin.php?page=bbb-submissions&updated=1' ) );
+		exit;
 	}
 }
