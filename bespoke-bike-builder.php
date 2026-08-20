@@ -38,6 +38,9 @@ require_once BBB_PLUGIN_DIR . 'includes/class-bbb-admin.php';
 // This loads the file that registers our [bbb_builder] shortcode.
 require_once BBB_PLUGIN_DIR . 'includes/class-bbb-shortcodes.php';
 
+// This loads the file that handles saving build submissions via AJAX.
+require_once BBB_PLUGIN_DIR . 'includes/class-bbb-ajax.php';
+
 // This is the actual activation hook.
 // It tells WordPress: "When this plugin is activated, run BBB_Activator::activate()."
 register_activation_hook( __FILE__, array( 'BBB_Activator', 'activate' ) );
@@ -47,3 +50,6 @@ BBB_Admin::init();
 
 // This starts up the shortcode feature by calling its init() method.
 BBB_Shortcodes::init();
+
+// This starts up the AJAX submission handler by calling its init() method.
+BBB_Ajax::init();

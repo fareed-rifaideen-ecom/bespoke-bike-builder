@@ -7,8 +7,9 @@
  * a lead capture step (Name, Email, Phone). Each option step is
  * displayed as tiles or as a dropdown, depending on that group's
  * display_type value in the database. Navigation, the Review
- * summary, and the lead form validation are all handled by
- * assets/js/builder.js.
+ * summary, the lead form validation, and the actual save-to-database
+ * submission are all handled by assets/js/builder.js together with
+ * includes/class-bbb-ajax.php.
  */
 
 // If this file is opened directly in a browser (not through WordPress), stop everything.
@@ -42,14 +43,14 @@ class BBB_Shortcodes {
 			'bbb-builder-css',
 			BBB_PLUGIN_URL . 'assets/css/builder.css',
 			array(),
-			'1.3.0'
+			'1.4.0'
 		);
 
 		wp_enqueue_script(
 			'bbb-builder-js',
 			BBB_PLUGIN_URL . 'assets/js/builder.js',
 			array(),
-			'1.3.0',
+			'1.4.0',
 			true
 		);
 
@@ -102,10 +103,17 @@ class BBB_Shortcodes {
 
 		$total_option_steps = count( $groups );
 
+		// These two values let our JavaScript securely talk to WordPress
+		// in the background (via AJAX) when the customer submits their
+		// build request. The nonce is a one-time security token tied to
+		// this specific page load.
+		$ajax_url = admin_url( 'admin-ajax.php' );
+		$nonce    = wp_create_nonce( 'bbb_submit_build' );
+
 		ob_start();
 		?>
 
-		<div class="bbb-builder-placeholder" data-total-option-steps="<?php echo esc_attr( $total_option_steps ); ?>">
+		<div class="bbb-builder-placeholder" data-total-option-steps="<?php echo esc_attr( $total_option_steps ); ?>" data-template-id="<?php echo esc_attr( $template['id'] ); ?>" data-ajax-url="<?php echo esc_attr( $ajax_url ); ?>" data-nonce="<?php echo esc_attr( $nonce ); ?>">
 
 			<h2><?php echo esc_html( $template['name'] ); ?></h2>
 
@@ -125,7 +133,7 @@ class BBB_Shortcodes {
 				$is_first_step = ( 0 === $index );
 				?>
 
-				<div class="bbb-step<?php echo $is_first_step ? ' bbb-step-active' : ''; ?>" data-step-index="<?php echo esc_attr( $index ); ?>" data-group-label="<?php echo esc_attr( $group['label'] ); ?>">
+				<div class="bbb-step<?php echo $is_first_step ? ' bbb-step-active' : ''; ?>" data-step-index="<?php echo esc_attr( $index ); ?>" data-group-id="<?php echo esc_attr( $group['id'] ); ?>" data-group-label="<?php echo esc_attr( $group['label'] ); ?>">
 
 					<h3><?php echo esc_html( $group['label'] ); ?></h3>
 
@@ -134,7 +142,7 @@ class BBB_Shortcodes {
 						<select class="bbb-dropdown">
 							<option value="">Select an option</option>
 							<?php foreach ( $options as $option ) : ?>
-								<option value="<?php echo esc_attr( $option['label'] ); ?>">
+								<option value="<?php echo esc_attr( $option['id'] ); ?>" data-label="<?php echo esc_attr( $option['label'] ); ?>">
 									<?php echo esc_html( $option['label'] ); ?>
 								</option>
 							<?php endforeach; ?>
@@ -144,7 +152,7 @@ class BBB_Shortcodes {
 
 						<div class="bbb-tile-group">
 							<?php foreach ( $options as $option ) : ?>
-								<div class="bbb-tile" data-value="<?php echo esc_attr( $option['label'] ); ?>">
+								<div class="bbb-tile" data-option-id="<?php echo esc_attr( $option['id'] ); ?>" data-value="<?php echo esc_attr( $option['label'] ); ?>">
 									<?php echo esc_html( $option['label'] ); ?>
 								</div>
 							<?php endforeach; ?>
@@ -168,20 +176,28 @@ class BBB_Shortcodes {
 
 				<h3>Your Details</h3>
 
-				<div class="bbb-lead-field">
-					<label for="bbb-lead-name">Full Name</label>
-					<input type="text" id="bbb-lead-name" class="bbb-lead-input" placeholder="Your full name">
+				<div class="bbb-lead-form-fields">
+
+					<div class="bbb-lead-field">
+						<label for="bbb-lead-name">Full Name</label>
+						<input type="text" id="bbb-lead-name" class="bbb-lead-input" placeholder="Your full name">
+					</div>
+
+					<div class="bbb-lead-field">
+						<label for="bbb-lead-email">Email Address</label>
+						<input type="email" id="bbb-lead-email" class="bbb-lead-input" placeholder="you@example.com">
+					</div>
+
+					<div class="bbb-lead-field">
+						<label for="bbb-lead-phone">Phone Number</label>
+						<input type="tel" id="bbb-lead-phone" class="bbb-lead-input" placeholder="+971 50 000 0000">
+					</div>
+
+					<p class="bbb-lead-error" style="display:none;"></p>
+
 				</div>
 
-				<div class="bbb-lead-field">
-					<label for="bbb-lead-email">Email Address</label>
-					<input type="email" id="bbb-lead-email" class="bbb-lead-input" placeholder="you@example.com">
-				</div>
-
-				<div class="bbb-lead-field">
-					<label for="bbb-lead-phone">Phone Number</label>
-					<input type="tel" id="bbb-lead-phone" class="bbb-lead-input" placeholder="+971 50 000 0000">
-				</div>
+				<div class="bbb-success-message" style="display:none;"></div>
 
 			</div>
 
