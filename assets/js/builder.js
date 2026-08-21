@@ -5,8 +5,9 @@
  *
  * As of Step 17, this also skips the Cockpit, Groupset, and Wheelset
  * steps entirely whenever the customer picks "Frame Only" in the
- * very first step (Build Type) - both while navigating and when
- * building the Review summary and the final saved submission.
+ * very first step (Build Type). As of Step 19, the lead capture step
+ * also includes an optional "Additional Information or Remarks"
+ * message, which is never required for the Submit button to enable.
  */
 
 document.addEventListener( 'DOMContentLoaded', function () {
@@ -27,9 +28,10 @@ document.addEventListener( 'DOMContentLoaded', function () {
 	var errorMessage    = wizard.querySelector( '.bbb-lead-error' );
 	var successMessage  = wizard.querySelector( '.bbb-success-message' );
 
-	var nameInput  = wizard.querySelector( '#bbb-lead-name' );
-	var emailInput = wizard.querySelector( '#bbb-lead-email' );
-	var phoneInput = wizard.querySelector( '#bbb-lead-phone' );
+	var nameInput    = wizard.querySelector( '#bbb-lead-name' );
+	var emailInput   = wizard.querySelector( '#bbb-lead-email' );
+	var phoneInput   = wizard.querySelector( '#bbb-lead-phone' );
+	var messageInput = wizard.querySelector( '#bbb-lead-message' );
 
 	// These come from PHP via data-* attributes on the wizard container,
 	// so JavaScript can safely talk to WordPress in the background.
@@ -121,6 +123,7 @@ document.addEventListener( 'DOMContentLoaded', function () {
 	/**
 	 * Checks whether the Name, Email, and Phone fields are all
 	 * filled in, and that the email looks like a valid address.
+	 * The Remarks field is always optional and never affects this.
 	 */
 	function isLeadFormValid() {
 
@@ -323,7 +326,8 @@ document.addEventListener( 'DOMContentLoaded', function () {
 	}
 
 	// Re-check the lead form's validity every time the customer types
-	// in any of the three fields, but only while that step is visible.
+	// in Name, Email, or Phone, but only while that step is visible.
+	// The Remarks field intentionally does not affect validity.
 	[ nameInput, emailInput, phoneInput ].forEach( function ( field ) {
 
 		field.addEventListener( 'input', function () {
@@ -372,6 +376,7 @@ document.addEventListener( 'DOMContentLoaded', function () {
 		formData.append( 'customer_name', nameInput.value.trim() );
 		formData.append( 'customer_email', emailInput.value.trim() );
 		formData.append( 'customer_whatsapp', phoneInput.value.trim() );
+		formData.append( 'customer_message', messageInput.value.trim() );
 		formData.append( 'options', JSON.stringify( optionsPayload ) );
 
 		nextButton.disabled    = true;

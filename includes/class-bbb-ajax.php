@@ -49,6 +49,7 @@ class BBB_Ajax {
 		$customer_name     = isset( $_POST['customer_name'] ) ? sanitize_text_field( wp_unslash( $_POST['customer_name'] ) ) : '';
 		$customer_email    = isset( $_POST['customer_email'] ) ? sanitize_email( wp_unslash( $_POST['customer_email'] ) ) : '';
 		$customer_whatsapp = isset( $_POST['customer_whatsapp'] ) ? sanitize_text_field( wp_unslash( $_POST['customer_whatsapp'] ) ) : '';
+		$customer_message  = isset( $_POST['customer_message'] ) ? sanitize_textarea_field( wp_unslash( $_POST['customer_message'] ) ) : '';
 		$options_raw       = isset( $_POST['options'] ) ? wp_unslash( $_POST['options'] ) : '';
 
 		// Never trust data sent from the browser. Even though our
@@ -60,6 +61,12 @@ class BBB_Ajax {
 
 		if ( empty( $customer_email ) || ! is_email( $customer_email ) ) {
 			wp_send_json_error( array( 'message' => 'Please enter a valid email address.' ) );
+		}
+
+		// The Remarks field is always optional, so an empty value is
+		// perfectly valid - we simply store it as NULL in that case.
+		if ( '' === $customer_message ) {
+			$customer_message = null;
 		}
 
 		$options = json_decode( $options_raw, true );
@@ -96,7 +103,7 @@ class BBB_Ajax {
 				'customer_name'     => $customer_name,
 				'customer_whatsapp' => $customer_whatsapp,
 				'customer_email'    => $customer_email,
-				'customer_message'  => null,
+				'customer_message'  => $customer_message,
 				'status'            => 'new',
 				'created_at'        => $now,
 				'updated_at'        => $now,
@@ -140,7 +147,7 @@ class BBB_Ajax {
 			}
 		}
 
-		self::send_notification_email( $template, $reference_code, $customer_name, $customer_email, $customer_whatsapp, $summary_lines );
+		self::send_notification_email( $template, $reference_code, $customer_name, $customer_email, $customer_whatsapp, $customer_message, $summary_lines );
 
 		wp_send_json_success( array( 'reference_code' => $reference_code ) );
 	}
@@ -164,7 +171,7 @@ class BBB_Ajax {
 	 * person needs it today. A future step can move this into a
 	 * proper settings field if more recipients are needed.
 	 */
-	private static function send_notification_email( $template, $reference_code, $customer_name, $customer_email, $customer_whatsapp, $summary_lines ) {
+	private static function send_notification_email( $template, $reference_code, $customer_name, $customer_email, $customer_whatsapp, $customer_message, $summary_lines ) {
 
 		$to      = 'fareed@thecyclehub.com';
 		$subject = 'New Bike Build Request - ' . $reference_code;
@@ -180,6 +187,10 @@ class BBB_Ajax {
 
 		foreach ( $summary_lines as $line ) {
 			$body .= '- ' . $line . "\n";
+		}
+
+		if ( ! empty( $customer_message ) ) {
+			$body .= "\nAdditional Information / Remarks:\n" . $customer_message . "\n";
 		}
 
 		wp_mail( $to, $subject, $body );

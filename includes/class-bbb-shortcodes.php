@@ -4,12 +4,12 @@
  *
  * [bbb_builder] renders every option group as its own step in a
  * one-step-at-a-time wizard, followed by a Review step and finally
- * a lead capture step (Name, Email, Phone). Each option step is
- * displayed as tiles or as a dropdown, depending on that group's
- * display_type value in the database. Navigation, the Review
- * summary, the lead form validation, and the actual save-to-database
- * submission are all handled by assets/js/builder.js together with
- * includes/class-bbb-ajax.php.
+ * a lead capture step (Name, Email, Phone, and an optional Remarks
+ * message). Each option step is displayed as tiles or as a dropdown,
+ * depending on that group's display_type value in the database.
+ * Navigation, the Review summary, the lead form validation, and the
+ * actual save-to-database submission are all handled by
+ * assets/js/builder.js together with includes/class-bbb-ajax.php.
  *
  * As of Step 17, assets/js/builder.js also skips the Cockpit,
  * Groupset, and Wheelset steps entirely whenever the customer picks
@@ -48,14 +48,14 @@ class BBB_Shortcodes {
 			'bbb-builder-css',
 			BBB_PLUGIN_URL . 'assets/css/builder.css',
 			array(),
-			'1.5.0'
+			'1.6.0'
 		);
 
 		wp_enqueue_script(
 			'bbb-builder-js',
 			BBB_PLUGIN_URL . 'assets/js/builder.js',
 			array(),
-			'1.5.0',
+			'1.6.0',
 			true
 		);
 
@@ -196,6 +196,11 @@ class BBB_Shortcodes {
 					<div class="bbb-lead-field">
 						<label for="bbb-lead-phone">Phone Number</label>
 						<input type="tel" id="bbb-lead-phone" class="bbb-lead-input" placeholder="+971 50 000 0000">
+					</div>
+
+					<div class="bbb-lead-field">
+						<label for="bbb-lead-message">Additional Information or Remarks (optional)</label>
+						<textarea id="bbb-lead-message" class="bbb-lead-input bbb-lead-textarea" rows="4" placeholder="Anything else we should know about your build?"></textarea>
 					</div>
 
 					<p class="bbb-lead-error" style="display:none;"></p>

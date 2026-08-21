@@ -6,8 +6,9 @@
  * - "Bespoke Bike Builder" - the original page confirming our build
  *   templates data exists (from Step 7).
  * - "Build Requests" - a real working list of every customer build
- *   submission, where staff can review the full build spec and
- *   update each request's status.
+ *   submission, where staff can review the full build spec, any
+ *   optional Remarks the customer left, and update each request's
+ *   status.
  */
 
 // If this file is opened directly in a browser (not through WordPress), stop everything.
@@ -115,7 +116,8 @@ class BBB_Admin {
 
 	/**
 	 * Displays every customer build request, most recent first, with
-	 * the full build spec for each one and a status dropdown.
+	 * the full build spec, any Remarks the customer left, and a
+	 * status dropdown for each one.
 	 */
 	public static function render_submissions_page() {
 
@@ -157,6 +159,7 @@ class BBB_Admin {
 							<th>Customer</th>
 							<th>Contact</th>
 							<th>Build Details</th>
+							<th>Remarks</th>
 							<th>Status</th>
 							<th>Submitted</th>
 						</tr>
@@ -195,6 +198,9 @@ class BBB_Admin {
 											<?php endforeach; ?>
 										</ul>
 									</details>
+								</td>
+								<td style="max-width: 220px;">
+									<?php echo ! empty( $submission['customer_message'] ) ? esc_html( $submission['customer_message'] ) : '<span style="color:#999;">-</span>'; ?>
 								</td>
 								<td>
 									<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
