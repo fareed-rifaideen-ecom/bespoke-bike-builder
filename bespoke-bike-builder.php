@@ -41,9 +41,18 @@ require_once BBB_PLUGIN_DIR . 'includes/class-bbb-shortcodes.php';
 // This loads the file that handles saving build submissions via AJAX.
 require_once BBB_PLUGIN_DIR . 'includes/class-bbb-ajax.php';
 
+// This loads the file that adds the Manage Build Options admin screen.
+require_once BBB_PLUGIN_DIR . 'includes/class-bbb-manage-options.php';
+
 // This is the actual activation hook.
 // It tells WordPress: "When this plugin is activated, run BBB_Activator::activate()."
 register_activation_hook( __FILE__, array( 'BBB_Activator', 'activate' ) );
+
+// This safely adds any newly-introduced database columns (like
+// wp_bbb_options.image_id from Step 18) on sites where the plugin
+// was already active before that column existed - no reactivation
+// needed.
+add_action( 'admin_init', array( 'BBB_Activator', 'maybe_upgrade' ) );
 
 // This starts up the admin menu page by calling its init() method.
 BBB_Admin::init();
@@ -53,3 +62,6 @@ BBB_Shortcodes::init();
 
 // This starts up the AJAX submission handler by calling its init() method.
 BBB_Ajax::init();
+
+// This starts up the Manage Build Options admin screen.
+BBB_Manage_Options::init();

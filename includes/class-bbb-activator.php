@@ -5,6 +5,11 @@
  * This class creates all of the plugin's database tables, and seeds
  * starter data so we have real content to build and test the
  * customer-facing builder in the next steps.
+ *
+ * As of Step 18, maybe_upgrade() also runs on every admin page load
+ * to safely add new columns (like image_id) to existing tables on
+ * sites where the plugin was already active before that column was
+ * introduced - without requiring anyone to deactivate/reactivate.
  */
 
 // If this file is opened directly in a browser (not through WordPress), stop everything.
@@ -33,6 +38,18 @@ class BBB_Activator {
 	}
 
 	/**
+	 * Safely re-runs table creation for tables whose structure has
+	 * changed since the plugin was first activated. dbDelta() only
+	 * ever adds or modifies columns to match the SQL given to it - it
+	 * never deletes existing data, so this is safe to run on every
+	 * admin page load.
+	 */
+	public static function maybe_upgrade() {
+
+		self::create_options_table();
+	}
+
+	/**
 	 * Creates the wp_bbb_templates table.
 	 *
 	 * This table stores each "Build Template" - for example,
@@ -42,8 +59,8 @@ class BBB_Activator {
 
 		global $wpdb;
 
-		$table_name       = $wpdb->prefix . 'bbb_templates';
-		$charset_collate  = $wpdb->get_charset_collate();
+		$table_name      = $wpdb->prefix . 'bbb_templates';
+		$charset_collate = $wpdb->get_charset_collate();
 
 		$sql = "CREATE TABLE {$table_name} (
 			id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -89,11 +106,14 @@ class BBB_Activator {
 	}
 
 	/**
-	 * Creates the wp_bbb_options table.
+	 * Creates (or, as of Step 18, upgrades) the wp_bbb_options table.
 	 *
 	 * Each row here is one selectable choice, e.g. "Black" or
 	 * "Shimano Ultegra Di2", and it belongs to one option group
-	 * (via group_id).
+	 * (via group_id). As of Step 18, each option can also carry an
+	 * optional image_id, pointing at a WordPress Media Library
+	 * attachment, so the customer-facing builder can show a real
+	 * product photo for that choice.
 	 */
 	private static function create_options_table() {
 
@@ -107,6 +127,7 @@ class BBB_Activator {
 			group_id BIGINT UNSIGNED NOT NULL,
 			label VARCHAR(191) NOT NULL,
 			price_delta DECIMAL(10,2) NOT NULL DEFAULT 0,
+			image_id BIGINT UNSIGNED NULL DEFAULT NULL,
 			is_active TINYINT(1) NOT NULL DEFAULT 1,
 			sort_order INT NOT NULL DEFAULT 0,
 			PRIMARY KEY  (id),
