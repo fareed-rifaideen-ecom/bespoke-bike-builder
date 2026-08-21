@@ -7,14 +7,15 @@
  * a lead capture step (Name, Email, Phone, and an optional Remarks
  * message). Each option step is displayed as tiles or as a dropdown,
  * depending on that group's display_type value in the database.
+ *
+ * As of Step 20, any tile whose option has a product photo attached
+ * (via the Manage Options admin screen) shows that photo as an
+ * image card instead of a plain text tile, and the whole wizard uses
+ * a dark, premium "Pinarello Dark" visual theme.
+ *
  * Navigation, the Review summary, the lead form validation, and the
  * actual save-to-database submission are all handled by
  * assets/js/builder.js together with includes/class-bbb-ajax.php.
- *
- * As of Step 17, assets/js/builder.js also skips the Cockpit,
- * Groupset, and Wheelset steps entirely whenever the customer picks
- * "Frame Only" in the very first step, since those parts do not
- * apply to a frame-only purchase.
  */
 
 // If this file is opened directly in a browser (not through WordPress), stop everything.
@@ -48,14 +49,14 @@ class BBB_Shortcodes {
 			'bbb-builder-css',
 			BBB_PLUGIN_URL . 'assets/css/builder.css',
 			array(),
-			'1.6.0'
+			'1.7.0'
 		);
 
 		wp_enqueue_script(
 			'bbb-builder-js',
 			BBB_PLUGIN_URL . 'assets/js/builder.js',
 			array(),
-			'1.6.0',
+			'1.7.0',
 			true
 		);
 
@@ -157,9 +158,23 @@ class BBB_Shortcodes {
 
 						<div class="bbb-tile-group">
 							<?php foreach ( $options as $option ) : ?>
-								<div class="bbb-tile" data-option-id="<?php echo esc_attr( $option['id'] ); ?>" data-value="<?php echo esc_attr( $option['label'] ); ?>">
-									<?php echo esc_html( $option['label'] ); ?>
+
+								<?php
+								$thumb_url = ! empty( $option['image_id'] )
+									? wp_get_attachment_image_url( $option['image_id'], 'medium' )
+									: '';
+								?>
+
+								<div class="bbb-tile<?php echo $thumb_url ? ' bbb-tile-with-image' : ''; ?>" data-option-id="<?php echo esc_attr( $option['id'] ); ?>" data-value="<?php echo esc_attr( $option['label'] ); ?>">
+
+									<?php if ( $thumb_url ) : ?>
+										<div class="bbb-tile-image" style="background-image:url('<?php echo esc_url( $thumb_url ); ?>');"></div>
+									<?php endif; ?>
+
+									<span class="bbb-tile-label"><?php echo esc_html( $option['label'] ); ?></span>
+
 								</div>
+
 							<?php endforeach; ?>
 						</div>
 
