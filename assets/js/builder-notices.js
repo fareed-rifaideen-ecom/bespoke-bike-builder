@@ -4,6 +4,12 @@
  * bbbNotices (wp_localize_script) — disclaimer text, checkbox
  * text, WhatsApp number and messages all come from the new
  * "BBB Notices" admin settings page, not hardcoded here.
+ *
+ * v2: removed the persistent top-of-builder disclaimer banner.
+ * The disclaimer now only appears directly above the Back/
+ * Continue buttons on the steps where it's relevant (Review,
+ * lead form, confirmation) — not duplicated at the top of
+ * every step.
  * ========================================================= */
 
 (function () {
@@ -30,17 +36,10 @@
     return "https://wa.me/" + whatsappNumber.replace("+", "") + "?text=" + encoded;
   }
 
-  function ensureTopBanner(root) {
-    if (!root || root.querySelector(".bbb-notice-banner--top")) return;
-    var banner = document.createElement("div");
-    banner.className = "bbb-notice-banner bbb-notice-banner--top";
-    banner.textContent = disclaimerText;
-    var heading = root.querySelector("h2") || root.firstElementChild;
-    if (heading && heading.parentNode) {
-      heading.parentNode.insertBefore(banner, heading.nextSibling);
-    } else {
-      root.insertBefore(banner, root.firstChild);
-    }
+  function removeLegacyTopBanner(root) {
+    if (!root) return;
+    var legacy = root.querySelector(".bbb-notice-banner--top");
+    if (legacy) legacy.parentNode.removeChild(legacy);
   }
 
   function ensureStepBanner(step, marker) {
@@ -160,7 +159,7 @@
   function runEnhancements() {
     var root = getRoot();
     if (!root) return;
-    ensureTopBanner(root);
+    removeLegacyTopBanner(root);
     tagAndBannerSteps(root);
     ensureFloatingWhatsapp();
     ensureFrameSizeHelp(root);
