@@ -157,24 +157,46 @@
 	margin-bottom: 6px;
 }
 
-.bbb-lead-input {
-	width: 100%;
-	background: #1e1e1e;
-	color: #e8e8e8;
-	padding: 10px 14px;
-	font-size: 15px;
-	border: 2px solid #333333;
-	border-radius: 8px;
-	box-sizing: border-box;
+/*
+ * These rules are written with extra specificity (targeting the
+ * exact input types by tag name, not just the shared class) and use
+ * !important, because the site's theme has its own generic input
+ * styling that would otherwise force a white background here.
+ */
+.bbb-builder-placeholder input.bbb-lead-input,
+.bbb-builder-placeholder textarea.bbb-lead-input,
+.bbb-builder-placeholder input[type="text"].bbb-lead-input,
+.bbb-builder-placeholder input[type="email"].bbb-lead-input,
+.bbb-builder-placeholder input[type="tel"].bbb-lead-input {
+	width: 100% !important;
+	background: #1e1e1e !important;
+	background-color: #1e1e1e !important;
+	color: #e8e8e8 !important;
+	padding: 10px 14px !important;
+	font-size: 15px !important;
+	border: 2px solid #333333 !important;
+	border-radius: 8px !important;
+	box-sizing: border-box !important;
+	box-shadow: none !important;
+	-webkit-text-fill-color: #e8e8e8 !important;
 }
 
-.bbb-lead-input:focus {
-	border-color: #3f6bab;
-	outline: none;
+.bbb-builder-placeholder input.bbb-lead-input:focus,
+.bbb-builder-placeholder textarea.bbb-lead-input:focus {
+	border-color: #3f6bab !important;
+	outline: none !important;
 }
 
-.bbb-lead-input::placeholder {
-	color: #6b7280;
+.bbb-builder-placeholder input.bbb-lead-input::placeholder,
+.bbb-builder-placeholder textarea.bbb-lead-input::placeholder {
+	color: #6b7280 !important;
+}
+
+/* Neutralises browser autofill (Chrome/Edge) forcing a white/yellow
+   background once a field has been autofilled. */
+.bbb-builder-placeholder input.bbb-lead-input:-webkit-autofill {
+	-webkit-box-shadow: 0 0 0 1000px #1e1e1e inset !important;
+	-webkit-text-fill-color: #e8e8e8 !important;
 }
 
 .bbb-lead-textarea {
