@@ -1,0 +1,214 @@
+/* =========================================================
+   Bespoke Bike Builder — Responsive Layer (Group 1, v2)
+   Corrected against the real builder.css class names:
+   .bbb-builder-placeholder, .bbb-step, .bbb-step-active,
+   .bbb-tile-group, .bbb-tile, .bbb-tile-selected,
+   .bbb-tile-with-image, .bbb-dropdown, .bbb-nav,
+   .bbb-next-button, .bbb-back-button, .bbb-progress,
+   .bbb-review-content, .bbb-review-row.
+   Additive only — loads AFTER builder.css, changes nothing
+   in the original file.
+   ========================================================= */
+
+/* ---------- 1. Touch target enforcement (44x44 minimum) ---------- */
+.bbb-tile,
+.bbb-tile-with-image,
+.bbb-next-button,
+.bbb-back-button,
+.bbb-dropdown {
+  min-height: 44px;
+  min-width: 44px;
+  box-sizing: border-box;
+}
+
+/* ---------- 2. Explicit column-count breakpoints for tile groups ---------- */
+@media (min-width: 1024px) {
+  .bbb-tile-group {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .bbb-tile-group {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+}
+
+@media (max-width: 767px) {
+  .bbb-tile-group {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+}
+
+@media (max-width: 420px) {
+  .bbb-tile-group {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------- 3. Sticky bottom Back/Continue bar (mobile) ---------- */
+@media (max-width: 767px) {
+  .bbb-nav {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 9999;
+    background: #141414;
+    padding: 12px 16px;
+    box-shadow: 0 -6px 18px rgba(0, 0, 0, 0.45);
+    border-top: 1px solid #2a2a2a;
+    margin-top: 0;
+  }
+
+  .bbb-nav .bbb-next-button,
+  .bbb-nav .bbb-back-button {
+    flex: 1;
+    text-align: center;
+  }
+
+  .bbb-builder-placeholder {
+    padding-bottom: 92px !important;
+  }
+}
+
+/* ---------- 4. Visual progress bar ---------- */
+.bbb-progress-track {
+  width: 100%;
+  height: 6px;
+  background: #2a2a2a;
+  border-radius: 3px;
+  overflow: hidden;
+  margin: -12px 0 24px;
+}
+
+.bbb-progress-fill {
+  height: 100%;
+  background: #3f6bab;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+  width: 0%;
+}
+
+/* ---------- 5. Expandable bottom-sheet build summary (mobile) ---------- */
+.bbb-summary-tab {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 68px;
+  z-index: 9998;
+  background: #1b1b1b;
+  color: #e8e8e8;
+  padding: 10px 16px;
+  display: none;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  border-top: 1px solid #2c2c2c;
+  cursor: pointer;
+}
+
+.bbb-summary-tab .bbb-summary-tab-arrow {
+  transition: transform 0.25s ease;
+  color: #9aa5b1;
+}
+
+.bbb-summary-tab.open .bbb-summary-tab-arrow {
+  transform: rotate(180deg);
+}
+
+.bbb-summary-sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10000;
+  background: #141414;
+  color: #e8e8e8;
+  max-height: 55vh;
+  overflow-y: auto;
+  transform: translateY(100%);
+  transition: transform 0.3s ease;
+  padding: 20px 20px 100px;
+  border-radius: 16px 16px 0 0;
+  box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.55);
+}
+
+.bbb-summary-sheet.open {
+  transform: translateY(0);
+}
+
+.bbb-summary-sheet-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid #2c2c2c;
+  font-size: 15px;
+}
+
+.bbb-summary-sheet-row .label {
+  color: #9aa5b1;
+}
+
+.bbb-summary-sheet-row .value {
+  color: #ffffff;
+  font-weight: bold;
+}
+
+.bbb-summary-sheet-close {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  background: none;
+  border: none;
+  color: #9aa5b1;
+  font-size: 20px;
+  cursor: pointer;
+  min-height: 32px;
+  min-width: 32px;
+}
+
+@media (max-width: 767px) {
+  .bbb-summary-tab {
+    display: flex;
+  }
+}
+
+/* ---------- 6. Cockpit Width -> Stem split selector ---------- */
+.bbb-cockpit-split {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 420px;
+  margin-bottom: 24px;
+}
+
+.bbb-cockpit-split label {
+  display: block;
+  font-size: 13px;
+  color: #9aa5b1;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.bbb-cockpit-split select.bbb-dropdown {
+  width: 100%;
+  margin-bottom: 0;
+}
+
+.bbb-cockpit-split select:disabled {
+  opacity: 0.5;
+}
+
+.bbb-cockpit-original-hidden {
+  display: none !important;
+}
