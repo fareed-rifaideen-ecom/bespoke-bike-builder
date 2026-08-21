@@ -5,11 +5,9 @@
  * text, WhatsApp number and messages all come from the new
  * "BBB Notices" admin settings page, not hardcoded here.
  *
- * v2: removed the persistent top-of-builder disclaimer banner.
- * The disclaimer now only appears directly above the Back/
- * Continue buttons on the steps where it's relevant (Review,
- * lead form, confirmation) — not duplicated at the top of
- * every step.
+ * v3: removed the floating WhatsApp button entirely. The only
+ * WhatsApp touchpoint now is the inline "Not sure which size is
+ * right? Chat with us" link on the Frame Size step.
  * ========================================================= */
 
 (function () {
@@ -23,7 +21,6 @@
   var checkboxText =
     settings.checkboxText ||
     "I understand that this configuration is subject to availability and confirmation by The Cycle Hub team. Deposit terms apply.";
-  var defaultMessage = settings.whatsappMessage || "Hi, I need help with my Dogma F build.";
   var sizeMessage = settings.whatsappSizeMessage || "Hi, I need help choosing the right frame size for my Dogma F build.";
 
   function getRoot() {
@@ -36,10 +33,12 @@
     return "https://wa.me/" + whatsappNumber.replace("+", "") + "?text=" + encoded;
   }
 
-  function removeLegacyTopBanner(root) {
+  function removeLegacyBanners(root) {
     if (!root) return;
-    var legacy = root.querySelector(".bbb-notice-banner--top");
-    if (legacy) legacy.parentNode.removeChild(legacy);
+    var legacyTop = root.querySelector(".bbb-notice-banner--top");
+    if (legacyTop) legacyTop.parentNode.removeChild(legacyTop);
+    var legacyFloating = document.querySelector(".bbb-whatsapp-floating");
+    if (legacyFloating) legacyFloating.parentNode.removeChild(legacyFloating);
   }
 
   function ensureStepBanner(step, marker) {
@@ -70,17 +69,6 @@
         successMsg.appendChild(confirmBanner);
       }
     });
-  }
-
-  function ensureFloatingWhatsapp() {
-    if (!whatsappNumber || document.querySelector(".bbb-whatsapp-floating")) return;
-    var link = document.createElement("a");
-    link.className = "bbb-whatsapp-floating";
-    link.href = buildWhatsappLink(defaultMessage);
-    link.target = "_blank";
-    link.rel = "noopener noreferrer";
-    link.innerHTML = "&#128172; Chat with us";
-    document.body.appendChild(link);
   }
 
   function ensureFrameSizeHelp(root) {
@@ -159,9 +147,8 @@
   function runEnhancements() {
     var root = getRoot();
     if (!root) return;
-    removeLegacyTopBanner(root);
+    removeLegacyBanners(root);
     tagAndBannerSteps(root);
-    ensureFloatingWhatsapp();
     ensureFrameSizeHelp(root);
     ensureAgreementCheckbox(root);
   }
