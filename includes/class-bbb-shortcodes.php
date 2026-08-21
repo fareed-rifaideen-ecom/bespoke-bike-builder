@@ -20,6 +20,12 @@
  * page load, so it works on any page the shortcode is placed on,
  * now or in the future, with zero manual configuration.
  *
+ * The footer on this site is a Flatsome UX Builder block, which sets
+ * its background colour as an inline style on its own inner section
+ * wrapper rather than on the theme's normal #footer element. The
+ * extra rules below specifically target and override that inline
+ * background, since a plain #footer selector alone cannot reach it.
+ *
  * Navigation, the Review summary, the lead form validation, and the
  * actual save-to-database submission are all handled by
  * assets/js/builder.js together with includes/class-bbb-ajax.php.
@@ -92,10 +98,10 @@ class BBB_Shortcodes {
 	 * Prints the dark-theme CSS for the header, footer, and general
 	 * page background - only applied where body.bbb-dark-page exists.
 	 *
-	 * These selectors target common Flatsome theme structure. If any
-	 * element doesn't pick up the dark styling (a theme customisation
-	 * can sometimes use different class names), we can refine the
-	 * exact selectors after seeing it live.
+	 * These selectors target common Flatsome theme structure, plus
+	 * specific overrides for the UX Builder footer block, which sets
+	 * its own background colour inline rather than through the
+	 * theme's usual #footer element.
 	 */
 	public static function print_dark_page_styles() {
 		?>
@@ -153,13 +159,35 @@ class BBB_Shortcodes {
 				fill: #e8e8e8 !important;
 			}
 
-			/* Footer. */
+			/* Footer - the theme's own footer wrapper. */
 			body.bbb-dark-page #footer,
 			body.bbb-dark-page .footer-wrapper,
 			body.bbb-dark-page footer {
 				background-color: #0d0d0d !important;
 				color: #9aa5b1 !important;
 				border-color: #262626 !important;
+			}
+
+			/*
+			 * The footer here is actually a Flatsome UX Builder block
+			 * (a reusable global section), which sets its background
+			 * colour as an inline style on its own inner wrapper - not
+			 * on the plain #footer element above. This attribute
+			 * selector specifically targets any element inside the
+			 * footer whose inline "style" attribute mentions a
+			 * background colour, and forces it dark instead.
+			 */
+			body.bbb-dark-page #footer [style*="background-color"],
+			body.bbb-dark-page #footer [style*="background:"],
+			body.bbb-dark-page footer [style*="background-color"],
+			body.bbb-dark-page footer [style*="background:"],
+			body.bbb-dark-page .ux-section,
+			body.bbb-dark-page .ux-section-bg,
+			body.bbb-dark-page .ux-row,
+			body.bbb-dark-page .row-bg-wrap {
+				background-color: #0d0d0d !important;
+				background-image: none !important;
+				color: #e8e8e8 !important;
 			}
 
 			body.bbb-dark-page #footer a,
@@ -181,6 +209,15 @@ class BBB_Shortcodes {
 			body.bbb-dark-page footer h3,
 			body.bbb-dark-page footer h4 {
 				color: #ffffff !important;
+			}
+
+			/* Newsletter sign-up widget in the footer, which normally
+			   has a white background box for its input field. */
+			body.bbb-dark-page footer input[type="text"],
+			body.bbb-dark-page footer input[type="email"] {
+				background-color: #1e1e1e !important;
+				color: #e8e8e8 !important;
+				border-color: #333333 !important;
 			}
 
 			/* Page title area, if the theme renders one above the content. */
