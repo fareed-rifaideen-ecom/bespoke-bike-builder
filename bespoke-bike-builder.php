@@ -71,3 +71,35 @@ BBB_Manage_Options::init();
 
 // This starts up the Header Settings admin screen.
 BBB_Header_Settings::init();
+
+// This loads the Group 1 responsive layer (progress bar, breakpoint tile
+// columns, sticky mobile nav, expandable summary, Cockpit width/stem split,
+// touch-target sizing) for the customer-facing Dogma F builder. It runs
+// as its own wp_enqueue_scripts action at priority 20, so it always loads
+// after the shortcode class's own builder.css/builder.js enqueue (which
+// runs at the default priority 10). It only enqueues anything if the
+// responsive files actually exist on disk, so it can never cause a fatal
+// error even if those files are ever removed.
+add_action( 'wp_enqueue_scripts', function () {
+	$css_path = BBB_PLUGIN_DIR . 'assets/css/builder-responsive.css';
+	$js_path  = BBB_PLUGIN_DIR . 'assets/js/builder-responsive.js';
+
+	if ( file_exists( $css_path ) ) {
+		wp_enqueue_style(
+			'bbb-builder-responsive',
+			BBB_PLUGIN_URL . 'assets/css/builder-responsive.css',
+			array(),
+			filemtime( $css_path )
+		);
+	}
+
+	if ( file_exists( $js_path ) ) {
+		wp_enqueue_script(
+			'bbb-builder-responsive',
+			BBB_PLUGIN_URL . 'assets/js/builder-responsive.js',
+			array(),
+			filemtime( $js_path ),
+			true
+		);
+	}
+}, 20 );
