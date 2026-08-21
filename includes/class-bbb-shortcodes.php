@@ -13,14 +13,17 @@
  * image card instead of a plain text tile, and the whole wizard uses
  * a dark, premium "Pinarello Dark" visual theme.
  *
- * As of Step 22, pages containing the [bbb_builder] shortcode
- * completely hide the theme's own header and footer (whose UX
- * Builder footer block proved unreliable to recolour from the
- * outside) and replace them with a small custom dark header (The
- * Cycle Hub logo + Pinarello logo, plus simple navigation back to
- * the main site) and a matching simple dark footer. This is
- * detected automatically via has_shortcode(), so it works on any
- * page the shortcode is placed on, now or in the future.
+ * As of Step 23, the HEADER shown on pages with [bbb_builder] can be
+ * switched between two styles via Bespoke Bike Builder -> Header
+ * Settings in wp-admin:
+ * - "default_dark": the theme's own header/menu, simply recoloured
+ *   dark, with the dark version of The Cycle Hub logo swapped in.
+ * - "custom": our own two-row header (logos, then a nav bar),
+ *   replacing the theme's header entirely.
+ *
+ * The FOOTER is never touched by this plugin at all - it always
+ * renders exactly as the theme (or a page-specific footer assigned
+ * through Flatsome's own page options) would normally show it.
  *
  * Navigation, the Review summary, the lead form validation, and the
  * actual save-to-database submission are all handled by
@@ -36,15 +39,20 @@ class BBB_Shortcodes {
 
 	/**
 	 * The dark-theme version of The Cycle Hub's logo, and the
-	 * Pinarello logo, both shown side by side in our custom header.
+	 * Pinarello logo, both used by the header styles below.
 	 */
 	private static $tch_logo_url       = 'https://thecyclehub.com/wp-content/uploads/TCH-Logo-White-in-Black.jpg';
 	private static $pinarello_logo_url = 'https://thecyclehub.com/wp-content/uploads/Pinarello-Logo.png';
 
 	/**
-	 * The simple navigation links shown in both our custom header and
-	 * our custom footer, so customers can always get back to the main
-	 * site without feeling stuck on this page.
+	 * Which header style is currently active for this page load -
+	 * either "default_dark" or "custom". Set once, in
+	 * maybe_enable_dark_page_theme(), from the bbb_header_mode option.
+	 */
+	private static $header_mode = 'custom';
+
+	/**
+	 * The simple navigation links used by the custom header style.
 	 */
 	private static function get_nav_links() {
 
@@ -74,9 +82,8 @@ class BBB_Shortcodes {
 	/**
 	 * Checks whether the page currently being viewed contains our
 	 * shortcode anywhere in its content. If it does, this registers
-	 * everything needed to hide the theme's header/footer and print
-	 * our own dark, minimal replacements instead - scoped to just
-	 * this one page.
+	 * everything needed to apply the currently selected header style
+	 * - scoped to just this one page. The footer is never touched.
 	 */
 	public static function maybe_enable_dark_page_theme() {
 
@@ -90,19 +97,26 @@ class BBB_Shortcodes {
 			return;
 		}
 
+		self::$header_mode = get_option( 'bbb_header_mode', 'custom' );
+
 		add_filter( 'body_class', array( __CLASS__, 'add_dark_page_body_class' ) );
 		add_action( 'wp_head', array( __CLASS__, 'print_dark_page_styles' ), 999 );
 
-		// 'wp_body_open' fires immediately after the opening <body> tag -
-		// this is the standard WordPress hook for printing markup right
-		// at the very top of the page, before the theme's own header.
-		add_action( 'wp_body_open', array( __CLASS__, 'print_custom_header' ) );
+		if ( 'custom' === self::$header_mode ) {
 
-		// A low priority (5) here just means our footer prints early
-		// among everything else hooked to wp_footer, though the exact
-		// order doesn't matter much since it's the last visible thing
-		// on the page either way.
-		add_action( 'wp_footer', array( __CLASS__, 'print_custom_footer' ), 5 );
+			// 'wp_body_open' fires immediately after the opening <body>
+			// tag - the standard WordPress hook for printing markup at
+			// the very top of the page, before the theme's own header.
+			add_action( 'wp_body_open', array( __CLASS__, 'print_custom_header' ) );
+
+		} else {
+
+			// In "default_dark" mode, the theme's own header stays and
+			// is simply recoloured via CSS; we still need to swap its
+			// logo image, which a small script in the footer handles
+			// (running after the header has already rendered).
+			add_action( 'wp_footer', array( __CLASS__, 'print_logo_swap_script' ) );
+		}
 	}
 
 	/**
@@ -117,10 +131,10 @@ class BBB_Shortcodes {
 	}
 
 	/**
-	 * Prints the dark-theme CSS for this page: it hides the theme's
-	 * own header/footer entirely, sets the page background dark, and
-	 * styles our own custom header/footer markup (printed separately
-	 * by print_custom_header() and print_custom_footer() below).
+	 * Prints the dark-theme CSS for this page. The page background
+	 * is always darkened; the header rules differ depending on
+	 * whether "default_dark" or "custom" mode is active. The footer
+	 * is never touched by any of this.
 	 */
 	public static function print_dark_page_styles() {
 		?>
@@ -137,133 +151,131 @@ class BBB_Shortcodes {
 				background-color: #0d0d0d !important;
 			}
 
-			/*
-			 * Hide the theme's own header and footer entirely. Rather
-			 * than fighting the UX Builder footer block's inline
-			 * background colours forever, we simply replace both with
-			 * our own minimal dark versions further down this file.
-			 */
-			body.bbb-dark-page #header,
-			body.bbb-dark-page .header-wrapper,
-			body.bbb-dark-page #masthead,
-			body.bbb-dark-page .top-bar,
-			body.bbb-dark-page #top-bar,
-			body.bbb-dark-page #footer,
-			body.bbb-dark-page .footer-wrapper {
-				display: none !important;
-			}
+			<?php if ( 'custom' === self::$header_mode ) : ?>
 
-			body.bbb-dark-page footer:not(.bbb-dark-footer) {
-				display: none !important;
-			}
-
-			/* Our own replacement header. */
-			.bbb-dark-header {
-				display: flex;
-				align-items: center;
-				justify-content: space-between;
-				flex-wrap: wrap;
-				gap: 16px;
-				background-color: #141414;
-				padding: 18px 32px;
-				border-bottom: 1px solid #262626;
-			}
-
-			.bbb-dark-header-logos {
-				display: flex;
-				align-items: center;
-				gap: 16px;
-			}
-
-			.bbb-dark-logo {
-				height: 40px;
-				width: auto;
-				display: block;
-			}
-
-			.bbb-dark-logo-divider {
-				color: #555555;
-				font-size: 20px;
-				line-height: 1;
-			}
-
-			.bbb-dark-nav {
-				display: flex;
-				gap: 24px;
-				flex-wrap: wrap;
-			}
-
-			.bbb-dark-nav a {
-				color: #e8e8e8;
-				text-decoration: none;
-				font-size: 13px;
-				font-weight: bold;
-				text-transform: uppercase;
-				letter-spacing: 0.05em;
-			}
-
-			.bbb-dark-nav a:hover {
-				color: #ffffff;
-			}
-
-			/* Our own replacement footer. */
-			.bbb-dark-footer {
-				background-color: #0d0d0d;
-				border-top: 1px solid #262626;
-				padding: 24px 32px;
-				text-align: center;
-				color: #9aa5b1;
-				font-size: 13px;
-			}
-
-			.bbb-dark-footer-nav {
-				display: flex;
-				justify-content: center;
-				gap: 20px;
-				flex-wrap: wrap;
-				margin-bottom: 10px;
-			}
-
-			.bbb-dark-footer-nav a,
-			.bbb-dark-footer a {
-				color: #c7ccd1;
-				text-decoration: none;
-			}
-
-			.bbb-dark-footer-nav a:hover,
-			.bbb-dark-footer a:hover {
-				color: #ffffff;
-			}
-
-			@media (max-width: 600px) {
-				.bbb-dark-header {
-					justify-content: center;
-					text-align: center;
+				/* Custom header mode: hide the theme's own header/top-bar
+				   entirely (the footer is deliberately left alone). */
+				body.bbb-dark-page #header,
+				body.bbb-dark-page .header-wrapper,
+				body.bbb-dark-page #masthead,
+				body.bbb-dark-page .top-bar,
+				body.bbb-dark-page #top-bar {
+					display: none !important;
 				}
-			}
+
+				/* Our own replacement header: a logo row above a nav bar. */
+				.bbb-custom-header {
+					background-color: #0d0d0d;
+				}
+
+				.bbb-custom-header-logos {
+					display: flex;
+					align-items: center;
+					justify-content: center;
+					gap: 20px;
+					padding: 20px;
+					background-color: #141414;
+				}
+
+				.bbb-custom-logo {
+					height: 44px;
+					width: auto;
+					display: block;
+				}
+
+				.bbb-custom-logo-divider {
+					color: #555555;
+					font-size: 22px;
+					line-height: 1;
+				}
+
+				.bbb-custom-header-nav {
+					display: flex;
+					align-items: center;
+					justify-content: center;
+					gap: 32px;
+					flex-wrap: wrap;
+					background-color: #000000;
+					padding: 14px 20px;
+				}
+
+				.bbb-custom-header-nav a {
+					color: #e8e8e8;
+					text-decoration: none;
+					font-size: 13px;
+					font-weight: bold;
+					text-transform: uppercase;
+					letter-spacing: 0.06em;
+				}
+
+				.bbb-custom-header-nav a:hover {
+					color: #ffffff;
+				}
+
+			<?php else : ?>
+
+				/* Default dark mode: keep the theme's own header/menu, but
+				   recolour it dark instead of hiding it. */
+				body.bbb-dark-page .top-bar,
+				body.bbb-dark-page #top-bar {
+					background-color: #1a1a1a !important;
+					border-color: #262626 !important;
+				}
+
+				body.bbb-dark-page #header,
+				body.bbb-dark-page .header-wrapper,
+				body.bbb-dark-page #masthead {
+					background-color: #141414 !important;
+					border-color: #262626 !important;
+				}
+
+				body.bbb-dark-page #header a,
+				body.bbb-dark-page .header-nav-main a,
+				body.bbb-dark-page .nav > li > a,
+				body.bbb-dark-page .nav-dropdown a {
+					color: #e8e8e8 !important;
+				}
+
+				body.bbb-dark-page #header a:hover,
+				body.bbb-dark-page .header-nav-main a:hover {
+					color: #ffffff !important;
+				}
+
+				body.bbb-dark-page .nav-dropdown,
+				body.bbb-dark-page .sub-menu {
+					background-color: #1e1e1e !important;
+					border-color: #333333 !important;
+				}
+
+				body.bbb-dark-page #header .icon,
+				body.bbb-dark-page #header svg {
+					color: #e8e8e8 !important;
+					fill: #e8e8e8 !important;
+				}
+
+			<?php endif; ?>
 
 		</style>
 		<?php
 	}
 
 	/**
-	 * Prints our own minimal dark header, right at the top of the
-	 * page (immediately after the opening <body> tag), replacing the
-	 * theme's own header which is hidden by the CSS above.
+	 * Prints our custom two-row header (logo row + nav bar), used
+	 * only when "custom" header mode is selected.
 	 */
 	public static function print_custom_header() {
 		?>
-		<header class="bbb-dark-header">
+		<header class="bbb-custom-header">
 
-			<div class="bbb-dark-header-logos">
+			<div class="bbb-custom-header-logos">
 				<a href="https://thecyclehub.com/">
-					<img src="<?php echo esc_url( self::$tch_logo_url ); ?>" alt="The Cycle Hub" class="bbb-dark-logo">
+					<img src="<?php echo esc_url( self::$tch_logo_url ); ?>" alt="The Cycle Hub" class="bbb-custom-logo">
 				</a>
-				<span class="bbb-dark-logo-divider">&times;</span>
-				<img src="<?php echo esc_url( self::$pinarello_logo_url ); ?>" alt="Pinarello" class="bbb-dark-logo">
+				<span class="bbb-custom-logo-divider">&times;</span>
+				<img src="<?php echo esc_url( self::$pinarello_logo_url ); ?>" alt="Pinarello" class="bbb-custom-logo">
 			</div>
 
-			<nav class="bbb-dark-nav">
+			<nav class="bbb-custom-header-nav">
 				<?php foreach ( self::get_nav_links() as $label => $url ) : ?>
 					<a href="<?php echo esc_url( $url ); ?>"><?php echo esc_html( $label ); ?></a>
 				<?php endforeach; ?>
@@ -274,22 +286,32 @@ class BBB_Shortcodes {
 	}
 
 	/**
-	 * Prints our own minimal dark footer, replacing the theme's own
-	 * UX Builder footer block which is hidden by the CSS above.
+	 * Swaps the site's normal logo image for the dark-theme version,
+	 * used only when "default_dark" header mode is selected (the
+	 * theme's own header stays, but needs its logo replaced).
 	 */
-	public static function print_custom_footer() {
+	public static function print_logo_swap_script() {
+
+		$dark_logo_url = esc_js( self::$tch_logo_url );
 		?>
-		<footer class="bbb-dark-footer">
+		<script>
+		document.addEventListener( 'DOMContentLoaded', function () {
 
-			<nav class="bbb-dark-footer-nav">
-				<?php foreach ( self::get_nav_links() as $label => $url ) : ?>
-					<a href="<?php echo esc_url( $url ); ?>"><?php echo esc_html( $label ); ?></a>
-				<?php endforeach; ?>
-			</nav>
+			var logoSelectors = [
+				'#logo img',
+				'.logo img',
+				'.header-logo img',
+				'#header .logo img'
+			];
 
-			<p>&copy; <?php echo esc_html( gmdate( 'Y' ) ); ?> The Cycle Hub. All rights reserved.</p>
+			logoSelectors.forEach( function ( selector ) {
 
-		</footer>
+				document.querySelectorAll( selector ).forEach( function ( logoImage ) {
+					logoImage.src = '<?php echo $dark_logo_url; ?>';
+				} );
+			} );
+		} );
+		</script>
 		<?php
 	}
 

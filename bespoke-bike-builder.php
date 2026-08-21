@@ -44,6 +44,9 @@ require_once BBB_PLUGIN_DIR . 'includes/class-bbb-ajax.php';
 // This loads the file that adds the Manage Build Options admin screen.
 require_once BBB_PLUGIN_DIR . 'includes/class-bbb-manage-options.php';
 
+// This loads the file that adds the Header Settings admin screen.
+require_once BBB_PLUGIN_DIR . 'includes/class-bbb-header-settings.php';
+
 // This is the actual activation hook.
 // It tells WordPress: "When this plugin is activated, run BBB_Activator::activate()."
 register_activation_hook( __FILE__, array( 'BBB_Activator', 'activate' ) );
@@ -65,3 +68,6 @@ BBB_Ajax::init();
 
 // This starts up the Manage Build Options admin screen.
 BBB_Manage_Options::init();
+
+// This starts up the Header Settings admin screen.
+BBB_Header_Settings::init();
