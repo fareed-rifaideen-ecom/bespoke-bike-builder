@@ -13,18 +13,14 @@
  * image card instead of a plain text tile, and the whole wizard uses
  * a dark, premium "Pinarello Dark" visual theme.
  *
- * As of Step 21, that dark theme now extends to the WHOLE page -
- * header, footer, and page background - but only on pages that
- * actually contain the [bbb_builder] shortcode. This is detected
- * automatically by checking the current page's content early in the
- * page load, so it works on any page the shortcode is placed on,
- * now or in the future, with zero manual configuration.
- *
- * The footer on this site is a Flatsome UX Builder block, which sets
- * its background colour as an inline style on its own inner section
- * wrapper rather than on the theme's normal #footer element. The
- * extra rules below specifically target and override that inline
- * background, since a plain #footer selector alone cannot reach it.
+ * As of Step 22, pages containing the [bbb_builder] shortcode
+ * completely hide the theme's own header and footer (whose UX
+ * Builder footer block proved unreliable to recolour from the
+ * outside) and replace them with a small custom dark header (The
+ * Cycle Hub logo + Pinarello logo, plus simple navigation back to
+ * the main site) and a matching simple dark footer. This is
+ * detected automatically via has_shortcode(), so it works on any
+ * page the shortcode is placed on, now or in the future.
  *
  * Navigation, the Review summary, the lead form validation, and the
  * actual save-to-database submission are all handled by
@@ -39,10 +35,26 @@ if ( ! defined( 'ABSPATH' ) ) {
 class BBB_Shortcodes {
 
 	/**
-	 * The dark-theme version of The Cycle Hub's logo, used only on
-	 * pages where the [bbb_builder] shortcode appears.
+	 * The dark-theme version of The Cycle Hub's logo, and the
+	 * Pinarello logo, both shown side by side in our custom header.
 	 */
-	private static $dark_logo_url = 'https://thecyclehub.com/wp-content/uploads/TCH-Logo-White-in-Black.jpg';
+	private static $tch_logo_url       = 'https://thecyclehub.com/wp-content/uploads/TCH-Logo-White-in-Black.jpg';
+	private static $pinarello_logo_url = 'https://thecyclehub.com/wp-content/uploads/Pinarello-Logo.png';
+
+	/**
+	 * The simple navigation links shown in both our custom header and
+	 * our custom footer, so customers can always get back to the main
+	 * site without feeling stuck on this page.
+	 */
+	private static function get_nav_links() {
+
+		return array(
+			'Home'          => 'https://thecyclehub.com/',
+			'Online Shop'   => 'https://thecyclehub.com/product-category/online-shop/',
+			'Contact'       => 'https://thecyclehub.com/contact/',
+			'Cycling Blogs' => 'https://thecyclehub.com/the-cycle-hub-blogs/',
+		);
+	}
 
 	/**
 	 * This function "switches on" the shortcode feature.
@@ -55,16 +67,16 @@ class BBB_Shortcodes {
 		// 'wp' fires once WordPress has figured out which page is being
 		// viewed, but before the theme starts outputting any HTML - so
 		// this is the right moment to check the page's content and, if
-		// needed, register the dark-theme hooks below in time for the
-		// header to already render dark.
+		// needed, register the dark-theme hooks below in time.
 		add_action( 'wp', array( __CLASS__, 'maybe_enable_dark_page_theme' ) );
 	}
 
 	/**
 	 * Checks whether the page currently being viewed contains our
 	 * shortcode anywhere in its content. If it does, this registers
-	 * everything needed to darken the whole page (body class, inline
-	 * CSS, and a logo-swap script) - scoped to just this one page.
+	 * everything needed to hide the theme's header/footer and print
+	 * our own dark, minimal replacements instead - scoped to just
+	 * this one page.
 	 */
 	public static function maybe_enable_dark_page_theme() {
 
@@ -80,7 +92,17 @@ class BBB_Shortcodes {
 
 		add_filter( 'body_class', array( __CLASS__, 'add_dark_page_body_class' ) );
 		add_action( 'wp_head', array( __CLASS__, 'print_dark_page_styles' ), 999 );
-		add_action( 'wp_footer', array( __CLASS__, 'print_logo_swap_script' ) );
+
+		// 'wp_body_open' fires immediately after the opening <body> tag -
+		// this is the standard WordPress hook for printing markup right
+		// at the very top of the page, before the theme's own header.
+		add_action( 'wp_body_open', array( __CLASS__, 'print_custom_header' ) );
+
+		// A low priority (5) here just means our footer prints early
+		// among everything else hooked to wp_footer, though the exact
+		// order doesn't matter much since it's the last visible thing
+		// on the page either way.
+		add_action( 'wp_footer', array( __CLASS__, 'print_custom_footer' ), 5 );
 	}
 
 	/**
@@ -95,13 +117,10 @@ class BBB_Shortcodes {
 	}
 
 	/**
-	 * Prints the dark-theme CSS for the header, footer, and general
-	 * page background - only applied where body.bbb-dark-page exists.
-	 *
-	 * These selectors target common Flatsome theme structure, plus
-	 * specific overrides for the UX Builder footer block, which sets
-	 * its own background colour inline rather than through the
-	 * theme's usual #footer element.
+	 * Prints the dark-theme CSS for this page: it hides the theme's
+	 * own header/footer entirely, sets the page background dark, and
+	 * styles our own custom header/footer markup (printed separately
+	 * by print_custom_header() and print_custom_footer() below).
 	 */
 	public static function print_dark_page_styles() {
 		?>
@@ -118,113 +137,109 @@ class BBB_Shortcodes {
 				background-color: #0d0d0d !important;
 			}
 
-			/* Top announcement bar (e.g. "DUBAI CYCLING SHOP IN JUMEIRAH..."). */
-			body.bbb-dark-page .top-bar,
-			body.bbb-dark-page #top-bar {
-				background-color: #1a1a1a !important;
-				border-color: #262626 !important;
-			}
-
-			/* Main header bar and its navigation menu. */
+			/*
+			 * Hide the theme's own header and footer entirely. Rather
+			 * than fighting the UX Builder footer block's inline
+			 * background colours forever, we simply replace both with
+			 * our own minimal dark versions further down this file.
+			 */
 			body.bbb-dark-page #header,
 			body.bbb-dark-page .header-wrapper,
-			body.bbb-dark-page #masthead {
-				background-color: #141414 !important;
-				border-color: #262626 !important;
-			}
-
-			body.bbb-dark-page #header a,
-			body.bbb-dark-page .header-nav-main a,
-			body.bbb-dark-page .nav > li > a,
-			body.bbb-dark-page .nav-dropdown a {
-				color: #e8e8e8 !important;
-			}
-
-			body.bbb-dark-page #header a:hover,
-			body.bbb-dark-page .header-nav-main a:hover {
-				color: #ffffff !important;
-			}
-
-			/* Dropdown submenus. */
-			body.bbb-dark-page .nav-dropdown,
-			body.bbb-dark-page .sub-menu {
-				background-color: #1e1e1e !important;
-				border-color: #333333 !important;
-			}
-
-			/* Header icons (search, cart, account). */
-			body.bbb-dark-page #header .icon,
-			body.bbb-dark-page #header svg {
-				color: #e8e8e8 !important;
-				fill: #e8e8e8 !important;
-			}
-
-			/* Footer - the theme's own footer wrapper. */
+			body.bbb-dark-page #masthead,
+			body.bbb-dark-page .top-bar,
+			body.bbb-dark-page #top-bar,
 			body.bbb-dark-page #footer,
-			body.bbb-dark-page .footer-wrapper,
-			body.bbb-dark-page footer {
-				background-color: #0d0d0d !important;
-				color: #9aa5b1 !important;
-				border-color: #262626 !important;
+			body.bbb-dark-page .footer-wrapper {
+				display: none !important;
 			}
 
-			/*
-			 * The footer here is actually a Flatsome UX Builder block
-			 * (a reusable global section), which sets its background
-			 * colour as an inline style on its own inner wrapper - not
-			 * on the plain #footer element above. This attribute
-			 * selector specifically targets any element inside the
-			 * footer whose inline "style" attribute mentions a
-			 * background colour, and forces it dark instead.
-			 */
-			body.bbb-dark-page #footer [style*="background-color"],
-			body.bbb-dark-page #footer [style*="background:"],
-			body.bbb-dark-page footer [style*="background-color"],
-			body.bbb-dark-page footer [style*="background:"],
-			body.bbb-dark-page .ux-section,
-			body.bbb-dark-page .ux-section-bg,
-			body.bbb-dark-page .ux-row,
-			body.bbb-dark-page .row-bg-wrap {
-				background-color: #0d0d0d !important;
-				background-image: none !important;
-				color: #e8e8e8 !important;
+			body.bbb-dark-page footer:not(.bbb-dark-footer) {
+				display: none !important;
 			}
 
-			body.bbb-dark-page #footer a,
-			body.bbb-dark-page footer a {
-				color: #c7ccd1 !important;
+			/* Our own replacement header. */
+			.bbb-dark-header {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				flex-wrap: wrap;
+				gap: 16px;
+				background-color: #141414;
+				padding: 18px 32px;
+				border-bottom: 1px solid #262626;
 			}
 
-			body.bbb-dark-page #footer a:hover,
-			body.bbb-dark-page footer a:hover {
-				color: #ffffff !important;
+			.bbb-dark-header-logos {
+				display: flex;
+				align-items: center;
+				gap: 16px;
 			}
 
-			body.bbb-dark-page #footer h1,
-			body.bbb-dark-page #footer h2,
-			body.bbb-dark-page #footer h3,
-			body.bbb-dark-page #footer h4,
-			body.bbb-dark-page footer h1,
-			body.bbb-dark-page footer h2,
-			body.bbb-dark-page footer h3,
-			body.bbb-dark-page footer h4 {
-				color: #ffffff !important;
+			.bbb-dark-logo {
+				height: 40px;
+				width: auto;
+				display: block;
 			}
 
-			/* Newsletter sign-up widget in the footer, which normally
-			   has a white background box for its input field. */
-			body.bbb-dark-page footer input[type="text"],
-			body.bbb-dark-page footer input[type="email"] {
-				background-color: #1e1e1e !important;
-				color: #e8e8e8 !important;
-				border-color: #333333 !important;
+			.bbb-dark-logo-divider {
+				color: #555555;
+				font-size: 20px;
+				line-height: 1;
 			}
 
-			/* Page title area, if the theme renders one above the content. */
-			body.bbb-dark-page .page-title,
-			body.bbb-dark-page .title-bar {
-				background-color: #0d0d0d !important;
-				color: #e8e8e8 !important;
+			.bbb-dark-nav {
+				display: flex;
+				gap: 24px;
+				flex-wrap: wrap;
+			}
+
+			.bbb-dark-nav a {
+				color: #e8e8e8;
+				text-decoration: none;
+				font-size: 13px;
+				font-weight: bold;
+				text-transform: uppercase;
+				letter-spacing: 0.05em;
+			}
+
+			.bbb-dark-nav a:hover {
+				color: #ffffff;
+			}
+
+			/* Our own replacement footer. */
+			.bbb-dark-footer {
+				background-color: #0d0d0d;
+				border-top: 1px solid #262626;
+				padding: 24px 32px;
+				text-align: center;
+				color: #9aa5b1;
+				font-size: 13px;
+			}
+
+			.bbb-dark-footer-nav {
+				display: flex;
+				justify-content: center;
+				gap: 20px;
+				flex-wrap: wrap;
+				margin-bottom: 10px;
+			}
+
+			.bbb-dark-footer-nav a,
+			.bbb-dark-footer a {
+				color: #c7ccd1;
+				text-decoration: none;
+			}
+
+			.bbb-dark-footer-nav a:hover,
+			.bbb-dark-footer a:hover {
+				color: #ffffff;
+			}
+
+			@media (max-width: 600px) {
+				.bbb-dark-header {
+					justify-content: center;
+					text-align: center;
+				}
 			}
 
 		</style>
@@ -232,35 +247,49 @@ class BBB_Shortcodes {
 	}
 
 	/**
-	 * Swaps the site's normal logo image for the dark-theme version,
-	 * only on pages using the [bbb_builder] shortcode. This runs in
-	 * the footer (after the header has already loaded) and simply
-	 * updates the src of whichever logo image element it finds -
-	 * it does not affect the logo on any other page, since this
-	 * script is only ever printed on pages where the shortcode exists.
+	 * Prints our own minimal dark header, right at the top of the
+	 * page (immediately after the opening <body> tag), replacing the
+	 * theme's own header which is hidden by the CSS above.
 	 */
-	public static function print_logo_swap_script() {
-
-		$dark_logo_url = esc_js( self::$dark_logo_url );
+	public static function print_custom_header() {
 		?>
-		<script>
-		document.addEventListener( 'DOMContentLoaded', function () {
+		<header class="bbb-dark-header">
 
-			var logoSelectors = [
-				'#logo img',
-				'.logo img',
-				'.header-logo img',
-				'#header .logo img'
-			];
+			<div class="bbb-dark-header-logos">
+				<a href="https://thecyclehub.com/">
+					<img src="<?php echo esc_url( self::$tch_logo_url ); ?>" alt="The Cycle Hub" class="bbb-dark-logo">
+				</a>
+				<span class="bbb-dark-logo-divider">&times;</span>
+				<img src="<?php echo esc_url( self::$pinarello_logo_url ); ?>" alt="Pinarello" class="bbb-dark-logo">
+			</div>
 
-			logoSelectors.forEach( function ( selector ) {
+			<nav class="bbb-dark-nav">
+				<?php foreach ( self::get_nav_links() as $label => $url ) : ?>
+					<a href="<?php echo esc_url( $url ); ?>"><?php echo esc_html( $label ); ?></a>
+				<?php endforeach; ?>
+			</nav>
 
-				document.querySelectorAll( selector ).forEach( function ( logoImage ) {
-					logoImage.src = '<?php echo $dark_logo_url; ?>';
-				} );
-			} );
-		} );
-		</script>
+		</header>
+		<?php
+	}
+
+	/**
+	 * Prints our own minimal dark footer, replacing the theme's own
+	 * UX Builder footer block which is hidden by the CSS above.
+	 */
+	public static function print_custom_footer() {
+		?>
+		<footer class="bbb-dark-footer">
+
+			<nav class="bbb-dark-footer-nav">
+				<?php foreach ( self::get_nav_links() as $label => $url ) : ?>
+					<a href="<?php echo esc_url( $url ); ?>"><?php echo esc_html( $label ); ?></a>
+				<?php endforeach; ?>
+			</nav>
+
+			<p>&copy; <?php echo esc_html( gmdate( 'Y' ) ); ?> The Cycle Hub. All rights reserved.</p>
+
+		</footer>
 		<?php
 	}
 
