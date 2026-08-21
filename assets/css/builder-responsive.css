@@ -1,13 +1,15 @@
 /* =========================================================
-   Bespoke Bike Builder — Responsive Layer (Group 1, v2)
-   Corrected against the real builder.css class names:
-   .bbb-builder-placeholder, .bbb-step, .bbb-step-active,
-   .bbb-tile-group, .bbb-tile, .bbb-tile-selected,
-   .bbb-tile-with-image, .bbb-dropdown, .bbb-nav,
-   .bbb-next-button, .bbb-back-button, .bbb-progress,
-   .bbb-review-content, .bbb-review-row.
-   Additive only — loads AFTER builder.css, changes nothing
-   in the original file.
+   Bespoke Bike Builder — Responsive Layer (Group 1, v3)
+   Fixes two gaps found in v2's cross-check against the blueprint:
+   1. Sticky nav + expandable summary now also apply at tablet
+      widths (768-1023px), not mobile-only.
+   2. Groupset/Wheelset tile groups get their own column rules
+      (2-column desktop/tablet, 1-column mobile) instead of
+      sharing the same column count as colour/build-type tiles.
+      Tagging is done by builder-responsive.js, which adds the
+      class .bbb-tile-group--cards based on the step heading text.
+   Additive only — loads AFTER builder.css, changes nothing in
+   the original file.
    ========================================================= */
 
 /* ---------- 1. Touch target enforcement (44x44 minimum) ---------- */
@@ -21,7 +23,7 @@
   box-sizing: border-box;
 }
 
-/* ---------- 2. Explicit column-count breakpoints for tile groups ---------- */
+/* ---------- 2a. Default tile groups (colour, build type, etc.) ---------- */
 @media (min-width: 1024px) {
   .bbb-tile-group {
     display: grid;
@@ -52,8 +54,21 @@
   }
 }
 
-/* ---------- 3. Sticky bottom Back/Continue bar (mobile) ---------- */
+/* ---------- 2b. Groupset / Wheelset cards — narrower column counts ---------- */
+@media (min-width: 768px) {
+  .bbb-tile-group.bbb-tile-group--cards {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
 @media (max-width: 767px) {
+  .bbb-tile-group.bbb-tile-group--cards {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ---------- 3. Sticky bottom Back/Continue bar (mobile AND tablet) ---------- */
+@media (max-width: 1023px) {
   .bbb-nav {
     position: fixed;
     left: 0;
@@ -96,7 +111,7 @@
   width: 0%;
 }
 
-/* ---------- 5. Expandable bottom-sheet build summary (mobile) ---------- */
+/* ---------- 5. Expandable bottom-sheet build summary (mobile AND tablet) ---------- */
 .bbb-summary-tab {
   position: fixed;
   left: 0;
@@ -176,7 +191,7 @@
   min-width: 32px;
 }
 
-@media (max-width: 767px) {
+@media (max-width: 1023px) {
   .bbb-summary-tab {
     display: flex;
   }

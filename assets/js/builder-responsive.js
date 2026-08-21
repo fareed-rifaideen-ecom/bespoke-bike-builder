@@ -1,16 +1,11 @@
 /* =========================================================
- * Bespoke Bike Builder — Responsive Layer (Group 1, v2)
- * Corrected against real class names. Since assets/js/builder.js
- * is currently empty, all step-switching/tile-click logic lives
- * in an inline <script> block elsewhere (likely inside the PHP
- * shortcode template). This script does NOT assume anything
- * about how that inline logic works internally — it only:
- *   (a) observes .bbb-step / .bbb-step-active to know the current
- *       step and total steps (both are real, confirmed classes),
- *   (b) reads .bbb-tile-selected to know current selections,
- *   (c) for the Cockpit split, calls .click() on the real tile
- *       element so whatever inline handler exists still fires
- *       exactly as if the user clicked it directly.
+ * Bespoke Bike Builder — Responsive Layer (Group 1, v3)
+ * Adds: tags Groupset/Wheelset tile groups with
+ * .bbb-tile-group--cards (styled by builder-responsive.css to
+ * use narrower 2-column/1-column layouts, matching the blueprint's
+ * distinction between colour/build-type tiles and product cards).
+ * Sticky nav + summary sheet now apply at tablet widths too via
+ * CSS changes only — no JS change needed for that part.
  * ========================================================= */
 
 (function () {
@@ -56,6 +51,27 @@
     if (activeIndex === -1 || steps.length === 0) return;
     var pct = Math.round(((activeIndex + 1) / steps.length) * 100);
     fill.style.width = pct + "%";
+  }
+
+  function tagCardTileGroups(root) {
+    if (!root) return;
+    root.querySelectorAll(".bbb-tile-group").forEach(function (group) {
+      if (group.dataset.bbbCardsTagged) return;
+
+      var heading = group.previousElementSibling;
+      var headingText = heading && heading.textContent ? heading.textContent.trim().toLowerCase() : "";
+
+      var looksLikeCards =
+        headingText.indexOf("groupset") !== -1 ||
+        headingText.indexOf("wheelset") !== -1 ||
+        group.querySelector(".bbb-tile-with-image") !== null;
+
+      if (looksLikeCards) {
+        group.classList.add("bbb-tile-group--cards");
+      }
+
+      group.dataset.bbbCardsTagged = "true";
+    });
   }
 
   function collectSelections(root) {
@@ -227,6 +243,7 @@
     if (!root) return;
     ensureProgressBar(root);
     updateProgressBar(root);
+    tagCardTileGroups(root);
     ensureSummarySheet(root);
     enhanceCockpitStep(root);
   }
