@@ -11,66 +11,38 @@
  * Text Domain:        bespoke-bike-builder
  */
 
-// If this file is opened directly in a browser (not through WordPress), stop everything.
 if ( ! defined( 'ABSPATH' ) ) {
-	exit; // Exit if accessed directly.
+	exit;
 }
 
-// A constant is a value that never changes while the plugin runs.
-// __FILE__ is a built-in PHP constant that always points to the current file's full path.
-// We save it here so other files in the plugin can find their way back to this main file.
 define( 'BBB_PLUGIN_FILE', __FILE__ );
-
-// This tells PHP where to find our other plugin files, so we can "require" them below.
 define( 'BBB_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
-
-// This gives us the public web address of our plugin folder, e.g.
-// https://thecyclehub.com/wp-content/plugins/bespoke-bike-builder/
-// We need this to correctly load our CSS and JavaScript files in the browser.
 define( 'BBB_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
-// This loads the file that contains our Activator class (the code that runs on activation).
 require_once BBB_PLUGIN_DIR . 'includes/class-bbb-activator.php';
-
-// This loads the file that adds our admin menu page.
 require_once BBB_PLUGIN_DIR . 'includes/class-bbb-admin.php';
-
-// This loads the file that registers our [bbb_builder] shortcode.
 require_once BBB_PLUGIN_DIR . 'includes/class-bbb-shortcodes.php';
-
-// This loads the file that handles saving build submissions via AJAX.
 require_once BBB_PLUGIN_DIR . 'includes/class-bbb-ajax.php';
-
-// This loads the file that adds the Manage Build Options admin screen.
 require_once BBB_PLUGIN_DIR . 'includes/class-bbb-manage-options.php';
-
-// This loads the file that adds the Header Settings admin screen.
 require_once BBB_PLUGIN_DIR . 'includes/class-bbb-header-settings.php';
 
-// This is the actual activation hook.
-// It tells WordPress: "When this plugin is activated, run BBB_Activator::activate()."
-register_activation_hook( __FILE__, array( 'BBB_Activator', 'activate' ) );
+// This loads the file that adds the Notices & WhatsApp admin settings
+// screen, where the disclaimer wording, the Notes-step agreement
+// checkbox text, and the WhatsApp number/messages can all be edited
+// without touching code.
+require_once BBB_PLUGIN_DIR . 'includes/class-bbb-notices-settings.php';
 
-// This safely adds any newly-introduced database columns (like
-// wp_bbb_options.image_id from Step 18) on sites where the plugin
-// was already active before that column existed - no reactivation
-// needed.
+register_activation_hook( __FILE__, array( 'BBB_Activator', 'activate' ) );
 add_action( 'admin_init', array( 'BBB_Activator', 'maybe_upgrade' ) );
 
-// This starts up the admin menu page by calling its init() method.
 BBB_Admin::init();
-
-// This starts up the shortcode feature by calling its init() method.
 BBB_Shortcodes::init();
-
-// This starts up the AJAX submission handler by calling its init() method.
 BBB_Ajax::init();
-
-// This starts up the Manage Build Options admin screen.
 BBB_Manage_Options::init();
-
-// This starts up the Header Settings admin screen.
 BBB_Header_Settings::init();
+
+// This starts up the Notices & WhatsApp settings screen.
+BBB_Notices_Settings::init();
 
 // This loads the Group 1 responsive layer (progress bar, breakpoint tile
 // columns, sticky mobile nav, expandable summary, Cockpit width/stem split,
@@ -103,3 +75,43 @@ add_action( 'wp_enqueue_scripts', function () {
 		);
 	}
 }, 20 );
+
+// This loads the Notices & WhatsApp customer-facing layer (disclaimer
+// banners, floating WhatsApp button, Frame Size WhatsApp help link, and
+// the Notes-step agreement checkbox). Runs at priority 21, after the
+// responsive layer above, and only enqueues if the files exist on disk.
+// The disclaimer text, checkbox text and WhatsApp number/messages are
+// passed from PHP to JavaScript via wp_localize_script, reading live
+// from the "BBB Notices" admin settings page rather than being
+// hardcoded, so future wording changes never require a code deployment.
+add_action( 'wp_enqueue_scripts', function () {
+	$css_path = BBB_PLUGIN_DIR . 'assets/css/builder-notices.css';
+	$js_path  = BBB_PLUGIN_DIR . 'assets/js/builder-notices.js';
+
+	if ( file_exists( $css_path ) ) {
+		wp_enqueue_style(
+			'bbb-builder-notices',
+			BBB_PLUGIN_URL . 'assets/css/builder-notices.css',
+			array(),
+			filemtime( $css_path )
+		);
+	}
+
+	if ( file_exists( $js_path ) ) {
+		wp_enqueue_script(
+			'bbb-builder-notices',
+			BBB_PLUGIN_URL . 'assets/js/builder-notices.js',
+			array(),
+			filemtime( $js_path ),
+			true
+		);
+
+		wp_localize_script( 'bbb-builder-notices', 'bbbNotices', array(
+			'whatsappNumber'      => BBB_Notices_Settings::get_whatsapp_number(),
+			'disclaimerText'      => BBB_Notices_Settings::get_disclaimer_text(),
+			'checkboxText'        => BBB_Notices_Settings::get_checkbox_text(),
+			'whatsappMessage'     => BBB_Notices_Settings::get_whatsapp_message(),
+			'whatsappSizeMessage' => BBB_Notices_Settings::get_whatsapp_size_message(),
+		) );
+	}
+}, 21 );
