@@ -26,11 +26,17 @@ require_once BBB_PLUGIN_DIR . 'includes/class-bbb-ajax.php';
 require_once BBB_PLUGIN_DIR . 'includes/class-bbb-manage-options.php';
 require_once BBB_PLUGIN_DIR . 'includes/class-bbb-header-settings.php';
 require_once BBB_PLUGIN_DIR . 'includes/class-bbb-notices-settings.php';
-
-// This loads the Draft & Resume system: its own database table, its
-// own AJAX save/get/email actions, entirely self-contained and
-// independent of the existing submission/activation logic above.
 require_once BBB_PLUGIN_DIR . 'includes/class-bbb-draft-resume.php';
+
+// This loads the Staff Roles & Capabilities system: registers the
+// Custom Build Manager / Sales Staff / Option Manager roles defined
+// in the blueprint, plus their bbb_ capabilities. Self-contained —
+// does not modify any existing class's permission checks.
+require_once BBB_PLUGIN_DIR . 'includes/class-bbb-roles.php';
+
+// This loads the small admin screen that shows role setup status
+// and which staff members currently hold each role.
+require_once BBB_PLUGIN_DIR . 'includes/class-bbb-roles-admin-page.php';
 
 register_activation_hook( __FILE__, array( 'BBB_Activator', 'activate' ) );
 add_action( 'admin_init', array( 'BBB_Activator', 'maybe_upgrade' ) );
@@ -41,9 +47,11 @@ BBB_Ajax::init();
 BBB_Manage_Options::init();
 BBB_Header_Settings::init();
 BBB_Notices_Settings::init();
-
-// This starts up the Draft & Resume system.
 BBB_Draft_Resume::init();
+
+// This starts up the Staff Roles system and its admin page.
+BBB_Roles::init();
+BBB_Roles_Admin_Page::init();
 
 // This loads the Group 1 responsive layer (progress bar, breakpoint tile
 // columns, sticky mobile nav, expandable summary, Cockpit width/stem split,
