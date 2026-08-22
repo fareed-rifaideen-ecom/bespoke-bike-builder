@@ -186,6 +186,9 @@ class BBB_Staff_Portal {
 		$has_status_column = in_array( 'status', $columns, true );
 		$status_options = $has_status_column ? self::get_status_options( $table ) : array();
 
+		$id_col = in_array( 'id', $columns, true ) ? 'id' : $columns[0];
+		$has_events_table = class_exists( 'BBB_Event_Log' ) && self::table_exists( $wpdb->prefix . 'bbb_submission_events' );
+
 		$order_col = in_array( 'created_at', $columns, true ) ? 'created_at' : ( in_array( 'id', $columns, true ) ? 'id' : $columns[0] );
 		$rows = $wpdb->get_results( "SELECT * FROM $table ORDER BY $order_col DESC LIMIT 200", ARRAY_A );
 
@@ -197,6 +200,9 @@ class BBB_Staff_Portal {
 		if ( $has_status_column ) {
 			echo '<th>Update Status</th>';
 		}
+		if ( $has_events_table ) {
+			echo '<th>History</th>';
+		}
 		echo '</tr></thead><tbody>';
 
 		foreach ( $rows as $row ) {
@@ -206,7 +212,6 @@ class BBB_Staff_Portal {
 				echo '<td>' . esc_html( wp_trim_words( (string) $value, 12 ) ) . '</td>';
 			}
 			if ( $has_status_column ) {
-				$id_col = in_array( 'id', $columns, true ) ? 'id' : $columns[0];
 				echo '<td>';
 				echo '<select class="bbb-staff-status-select" data-submission-id="' . esc_attr( $row[ $id_col ] ) . '">';
 				foreach ( $status_options as $status ) {
@@ -216,10 +221,66 @@ class BBB_Staff_Portal {
 				echo '</select>';
 				echo '</td>';
 			}
+			if ( $has_events_table ) {
+				echo '<td>' . self::render_history_cell( $row[ $id_col ] ) . '</td>';
+			}
 			echo '</tr>';
 		}
 
 		echo '</tbody></table></div>';
+	}
+
+	/**
+	 * Renders one submission's audit trail as a collapsed native
+	 * <details> disclosure, using events already recorded by
+	 * BBB_Event_Log (which listens for bbb_submission_created and
+	 * bbb_submission_status_updated elsewhere in the plugin). This
+	 * needs no JavaScript, so it works even before the staff-portal
+	 * script is updated to handle it.
+	 *
+	 * @param int $submission_id
+	 * @return string HTML
+	 */
+	private static function render_history_cell( $submission_id ) {
+
+		$events = BBB_Event_Log::get_events_for_submission( $submission_id );
+
+		if ( empty( $events ) ) {
+			return '<span class="bbb-staff-history-empty">No history yet.</span>';
+		}
+
+		$html  = '<details class="bbb-staff-history"><summary>' . count( $events ) . ' event(s)</summary><ul class="bbb-staff-history-list">';
+
+		foreach ( $events as $event ) {
+			$actor = '';
+			if ( ! empty( $event['actor_id'] ) ) {
+				$actor_user = get_userdata( $event['actor_id'] );
+				if ( $actor_user ) {
+					$actor = ' — ' . esc_html( $actor_user->display_name );
+				}
+			}
+
+			$html .= '<li><strong>' . esc_html( $event['created_at'] ) . '</strong>: ' . esc_html( $event['description'] ) . $actor . '</li>';
+		}
+
+		$html .= '</ul></details>';
+
+		return $html;
+	}
+
+	/**
+	 * Checks whether a given table exists in the database, so the
+	 * History column can degrade gracefully (simply not appear)
+	 * instead of causing a fatal error on sites where the event log
+	 * table hasn't been created yet (e.g. before the next admin_init
+	 * upgrade check runs).
+	 *
+	 * @param string $table
+	 * @return bool
+	 */
+	private static function table_exists( $table ) {
+		global $wpdb;
+		return $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) === $table;
 	}
 
 	/**
