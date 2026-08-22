@@ -179,13 +179,19 @@ class BBB_Ajax {
 	 * know about it immediately instead of having to check the
 	 * database or an admin page.
 	 *
-	 * The recipient address is hard-coded for now, since only one
-	 * person needs it today. A future step can move this into a
-	 * proper settings field if more recipients are needed.
+	 * The recipient list is read from BBB_Notification_Settings (an
+	 * Administrator-editable Settings > BBB Notifications page), so
+	 * it can include the Sales Manager and any additional staff
+	 * without ever touching this file. If that class isn't available
+	 * for any reason, this falls back to the original address so
+	 * notifications never silently stop working.
 	 */
 	private static function send_notification_email( $template, $reference_code, $customer_name, $customer_email, $customer_whatsapp, $customer_message, $summary_lines ) {
 
-		$to      = 'fareed@thecyclehub.com';
+		$to = class_exists( 'BBB_Notification_Settings' )
+			? BBB_Notification_Settings::get_recipients()
+			: array( 'fareed@thecyclehub.com' );
+
 		$subject = 'New Bike Build Request - ' . $reference_code;
 
 		$body  = "A new custom bike build request has been submitted.\n\n";
