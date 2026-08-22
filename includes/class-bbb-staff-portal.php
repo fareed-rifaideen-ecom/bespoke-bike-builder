@@ -281,11 +281,25 @@ class BBB_Staff_Portal {
 			wp_send_json_error( array( 'message' => 'Invalid submission or status.' ), 400 );
 		}
 
+		$old_status = $wpdb->get_var( $wpdb->prepare( "SELECT status FROM $table WHERE $id_col = %d", $submission_id ) );
+
 		$updated = $wpdb->update( $table, array( 'status' => $new_status ), array( $id_col => $submission_id ) );
 
 		if ( $updated === false ) {
 			wp_send_json_error( array( 'message' => 'Could not update status.' ), 500 );
 		}
+
+		/**
+		 * Fires after a staff member successfully changes a submission's status.
+		 * Used by the event/audit log (and future notification system) so this
+		 * class doesn't need to know anything about how logging/notifications work.
+		 *
+		 * @param int    $submission_id
+		 * @param string $old_status
+		 * @param string $new_status
+		 * @param int    $user_id Staff member who made the change.
+		 */
+		do_action( 'bbb_submission_status_updated', $submission_id, $old_status, $new_status, get_current_user_id() );
 
 		wp_send_json_success( array( 'message' => 'Status updated.' ) );
 	}
