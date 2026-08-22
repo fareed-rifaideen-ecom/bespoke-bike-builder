@@ -1,0 +1,77 @@
+/* =========================================================
+   Bespoke Bike Builder — Draft & Resume Layer
+   Additive stylesheet. Loads AFTER all other builder assets.
+   ========================================================= */
+
+.bbb-save-draft-link {
+  display: inline-block;
+  margin-top: 14px;
+  color: #9aa5b1;
+  font-size: 13px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.bbb-save-draft-link:hover {
+  color: #ffffff;
+}
+
+.bbb-save-draft-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 20000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.bbb-save-draft-box {
+  background: #141414;
+  border: 1px solid #2c2c2c;
+  border-radius: 12px;
+  padding: 28px;
+  max-width: 380px;
+  width: 100%;
+  color: #e8e8e8;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.bbb-save-draft-box h3 {
+  margin-top: 0;
+  color: #ffffff;
+}
+
+.bbb-save-draft-box p {
+  color: #9aa5b1;
+  font-size: 14px;
+}
+
+.bbb-save-draft-email {
+  width: 100%;
+  background: #1e1e1e;
+  color: #e8e8e8;
+  border: 2px solid #333333;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 15px;
+  box-sizing: border-box;
+  margin-bottom: 10px;
+  min-height: 44px;
+}
+
+.bbb-save-draft-status {
+  min-height: 18px;
+  font-size: 13px;
+  margin-bottom: 14px;
+}
+
+.bbb-save-draft-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.bbb-save-draft-actions button {
+  flex: 1;
+}

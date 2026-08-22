@@ -25,12 +25,12 @@ require_once BBB_PLUGIN_DIR . 'includes/class-bbb-shortcodes.php';
 require_once BBB_PLUGIN_DIR . 'includes/class-bbb-ajax.php';
 require_once BBB_PLUGIN_DIR . 'includes/class-bbb-manage-options.php';
 require_once BBB_PLUGIN_DIR . 'includes/class-bbb-header-settings.php';
-
-// This loads the file that adds the Notices & WhatsApp admin settings
-// screen, where the disclaimer wording, the Notes-step agreement
-// checkbox text, and the WhatsApp number/messages can all be edited
-// without touching code.
 require_once BBB_PLUGIN_DIR . 'includes/class-bbb-notices-settings.php';
+
+// This loads the Draft & Resume system: its own database table, its
+// own AJAX save/get/email actions, entirely self-contained and
+// independent of the existing submission/activation logic above.
+require_once BBB_PLUGIN_DIR . 'includes/class-bbb-draft-resume.php';
 
 register_activation_hook( __FILE__, array( 'BBB_Activator', 'activate' ) );
 add_action( 'admin_init', array( 'BBB_Activator', 'maybe_upgrade' ) );
@@ -40,9 +40,10 @@ BBB_Shortcodes::init();
 BBB_Ajax::init();
 BBB_Manage_Options::init();
 BBB_Header_Settings::init();
-
-// This starts up the Notices & WhatsApp settings screen.
 BBB_Notices_Settings::init();
+
+// This starts up the Draft & Resume system.
+BBB_Draft_Resume::init();
 
 // This loads the Group 1 responsive layer (progress bar, breakpoint tile
 // columns, sticky mobile nav, expandable summary, Cockpit width/stem split,
@@ -77,13 +78,12 @@ add_action( 'wp_enqueue_scripts', function () {
 }, 20 );
 
 // This loads the Notices & WhatsApp customer-facing layer (disclaimer
-// banners, floating WhatsApp button, Frame Size WhatsApp help link, and
-// the Notes-step agreement checkbox). Runs at priority 21, after the
-// responsive layer above, and only enqueues if the files exist on disk.
-// The disclaimer text, checkbox text and WhatsApp number/messages are
-// passed from PHP to JavaScript via wp_localize_script, reading live
-// from the "BBB Notices" admin settings page rather than being
-// hardcoded, so future wording changes never require a code deployment.
+// banners, Frame Size WhatsApp help link, and the Notes-step agreement
+// checkbox). Runs at priority 21, after the responsive layer above, and
+// only enqueues if the files exist on disk. The disclaimer text,
+// checkbox text and WhatsApp number/messages are passed from PHP to
+// JavaScript via wp_localize_script, reading live from the "BBB
+// Notices" admin settings page rather than being hardcoded.
 add_action( 'wp_enqueue_scripts', function () {
 	$css_path = BBB_PLUGIN_DIR . 'assets/css/builder-notices.css';
 	$js_path  = BBB_PLUGIN_DIR . 'assets/js/builder-notices.js';
@@ -115,3 +115,38 @@ add_action( 'wp_enqueue_scripts', function () {
 		) );
 	}
 }, 21 );
+
+// This loads the Draft & Resume customer-facing layer (auto-save,
+// "Save & continue later" prompt, and auto-resume from an emailed
+// link). Runs at priority 22, after the two layers above. The AJAX
+// URL and a dedicated nonce are passed to JavaScript via
+// wp_localize_script so all save/resume requests are authenticated
+// the same way any other WordPress AJAX call would be.
+add_action( 'wp_enqueue_scripts', function () {
+	$css_path = BBB_PLUGIN_DIR . 'assets/css/builder-draft-resume.css';
+	$js_path  = BBB_PLUGIN_DIR . 'assets/js/builder-draft-resume.js';
+
+	if ( file_exists( $css_path ) ) {
+		wp_enqueue_style(
+			'bbb-builder-draft-resume',
+			BBB_PLUGIN_URL . 'assets/css/builder-draft-resume.css',
+			array(),
+			filemtime( $css_path )
+		);
+	}
+
+	if ( file_exists( $js_path ) ) {
+		wp_enqueue_script(
+			'bbb-builder-draft-resume',
+			BBB_PLUGIN_URL . 'assets/js/builder-draft-resume.js',
+			array(),
+			filemtime( $js_path ),
+			true
+		);
+
+		wp_localize_script( 'bbb-builder-draft-resume', 'bbbDraftResume', array(
+			'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+			'nonce'   => wp_create_nonce( 'bbb_draft_resume_nonce' ),
+		) );
+	}
+}, 22 );
