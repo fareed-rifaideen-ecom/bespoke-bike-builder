@@ -37,6 +37,14 @@ require_once BBB_PLUGIN_DIR . 'includes/class-bbb-roles-admin-page.php';
 // gated by the manage_bbb_submissions / manage_options capabilities.
 require_once BBB_PLUGIN_DIR . 'includes/class-bbb-staff-portal.php';
 
+// This loads the Submission Event Log: a listener that records an
+// audit-trail row every time a build request is submitted or its
+// status changes, by listening for the bbb_submission_created and
+// bbb_submission_status_updated actions fired from BBB_Ajax and
+// BBB_Staff_Portal respectively. It does not hook into anything
+// itself unless BBB_Event_Log::init() is called below.
+require_once BBB_PLUGIN_DIR . 'includes/class-bbb-event-log.php';
+
 register_activation_hook( __FILE__, array( 'BBB_Activator', 'activate' ) );
 add_action( 'admin_init', array( 'BBB_Activator', 'maybe_upgrade' ) );
 
@@ -53,6 +61,9 @@ BBB_Roles_Admin_Page::init();
 // This starts up the Staff Frontend Portal shortcode and its AJAX
 // handlers (login, logout, status updates).
 BBB_Staff_Portal::init();
+
+// This starts up the Submission Event Log listener.
+BBB_Event_Log::init();
 
 // This loads the Group 1 responsive layer (progress bar, breakpoint tile
 // columns, sticky mobile nav, expandable summary, Cockpit width/stem split,
