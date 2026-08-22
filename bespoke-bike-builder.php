@@ -45,6 +45,13 @@ require_once BBB_PLUGIN_DIR . 'includes/class-bbb-staff-portal.php';
 // itself unless BBB_Event_Log::init() is called below.
 require_once BBB_PLUGIN_DIR . 'includes/class-bbb-event-log.php';
 
+// This loads the Notification Recipient Settings: a Settings > BBB
+// Notifications admin page where an Administrator can set which
+// email addresses get notified of new build requests (the Sales
+// Manager and any additional staff), instead of that address being
+// hardcoded into class-bbb-ajax.php.
+require_once BBB_PLUGIN_DIR . 'includes/class-bbb-notification-settings.php';
+
 register_activation_hook( __FILE__, array( 'BBB_Activator', 'activate' ) );
 add_action( 'admin_init', array( 'BBB_Activator', 'maybe_upgrade' ) );
 
@@ -64,6 +71,9 @@ BBB_Staff_Portal::init();
 
 // This starts up the Submission Event Log listener.
 BBB_Event_Log::init();
+
+// This starts up the Notification Recipient Settings page.
+BBB_Notification_Settings::init();
 
 // This loads the Group 1 responsive layer (progress bar, breakpoint tile
 // columns, sticky mobile nav, expandable summary, Cockpit width/stem split,
