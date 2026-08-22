@@ -30,6 +30,7 @@ class BBB_Activator {
 		self::create_options_table();
 		self::create_submissions_table();
 		self::create_submission_items_table();
+		self::create_submission_events_table();
 
 		self::seed_default_template();
 		self::seed_default_option_groups_and_options();
@@ -47,6 +48,7 @@ class BBB_Activator {
 	public static function maybe_upgrade() {
 
 		self::create_options_table();
+		self::create_submission_events_table();
 	}
 
 	/**
@@ -190,6 +192,39 @@ class BBB_Activator {
 			submission_id BIGINT UNSIGNED NOT NULL,
 			group_id BIGINT UNSIGNED NOT NULL,
 			option_id BIGINT UNSIGNED NOT NULL,
+			PRIMARY KEY  (id),
+			KEY submission_id (submission_id)
+		) {$charset_collate};";
+
+		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+		dbDelta( $sql );
+	}
+
+	/**
+	 * Creates the wp_bbb_submission_events table.
+	 *
+	 * Each row here is one audit-log entry for one submission - for
+	 * example "Build request BBB-4F92A1 submitted." or "Status changed
+	 * from 'new' to 'contacted'." This is populated entirely by
+	 * BBB_Event_Log, which listens for the bbb_submission_created and
+	 * bbb_submission_status_updated actions fired elsewhere in the
+	 * plugin. This class only needs to know the table's shape, not
+	 * who writes to it.
+	 */
+	private static function create_submission_events_table() {
+
+		global $wpdb;
+
+		$table_name      = $wpdb->prefix . 'bbb_submission_events';
+		$charset_collate = $wpdb->get_charset_collate();
+
+		$sql = "CREATE TABLE {$table_name} (
+			id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+			submission_id BIGINT UNSIGNED NOT NULL,
+			event_type VARCHAR(50) NOT NULL,
+			description TEXT NOT NULL,
+			actor_id BIGINT UNSIGNED NULL DEFAULT NULL,
+			created_at DATETIME NOT NULL,
 			PRIMARY KEY  (id),
 			KEY submission_id (submission_id)
 		) {$charset_collate};";
