@@ -4,6 +4,12 @@
  * bbb_email_draft_link AJAX actions (wp-admin/admin-ajax.php),
  * registered by class-bbb-draft-resume.php. Does not modify or
  * depend on the internals of builder.js.
+ *
+ * v2: now sends the browser's actual page URL (window.location.href,
+ * stripped of any query string) along with the email request, so the
+ * server can build a correct resume link instead of guessing one from
+ * the AJAX request's own URL (which was the bug — the resume link
+ * pointed at admin-ajax.php instead of the actual builder page).
  * ========================================================= */
 
 (function () {
@@ -22,6 +28,10 @@
   function getUrlParam(name) {
     var params = new URLSearchParams(window.location.search);
     return params.get(name);
+  }
+
+  function getCleanPageUrl() {
+    return window.location.origin + window.location.pathname;
   }
 
   function collectSelections(root) {
@@ -175,7 +185,7 @@
 
       ajaxPost(
         "bbb_email_draft_link",
-        { token: currentToken, email: email },
+        { token: currentToken, email: email, page_url: getCleanPageUrl() },
         function () {
           status.textContent = "Link sent! Check your inbox.";
           status.style.color = "#7fe0a0";

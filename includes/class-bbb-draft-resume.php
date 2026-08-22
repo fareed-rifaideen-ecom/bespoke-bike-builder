@@ -36,11 +36,6 @@ class BBB_Draft_Resume {
 		return $wpdb->prefix . self::TABLE_NAME;
 	}
 
-	/**
-	 * Creates the wp_bbb_drafts table on first load if it doesn't already
-	 * exist. Safe to run on every plugins_loaded call — dbDelta() and the
-	 * SHOW TABLES check both no-op harmlessly if the table is present.
-	 */
 	public static function maybe_create_table() {
 		global $wpdb;
 		$table = self::table_name();
@@ -76,13 +71,6 @@ class BBB_Draft_Resume {
 		return wp_verify_nonce( $nonce, self::NONCE_ACTION );
 	}
 
-	/**
-	 * Saves or updates a draft. If no token is supplied, a new one is
-	 * generated and returned. Selections are stored as-is (a JSON string
-	 * built client-side from the customer's current tile/dropdown state)
-	 * — never trusted or parsed as executable data, only stored and
-	 * echoed back verbatim on resume.
-	 */
 	public static function ajax_save_draft() {
 		if ( ! self::verify_nonce() ) {
 			wp_send_json_error( array( 'message' => 'Invalid request.' ), 403 );
@@ -162,6 +150,14 @@ class BBB_Draft_Resume {
 	/**
 	 * Emails the resume link to the customer. Uses the site's default
 	 * wp_mail() transport — no external email service dependency.
+	 *
+	 * FIX: the resume URL is now built from a `page_url` value sent by
+	 * the browser (which knows the real page it's on), instead of being
+	 * reconstructed server-side from $_SERVER['REQUEST_URI'] — that
+	 * previously pointed at admin-ajax.php itself, since that's the
+	 * literal URL this AJAX request is POSTed to. The submitted page_url
+	 * is restricted to the current site's own host, so it can never be
+	 * used to build a link to an external domain.
 	 */
 	public static function ajax_email_draft_link() {
 		if ( ! self::verify_nonce() ) {
@@ -173,6 +169,7 @@ class BBB_Draft_Resume {
 
 		$token = isset( $_POST['token'] ) ? sanitize_text_field( wp_unslash( $_POST['token'] ) ) : '';
 		$email = isset( $_POST['email'] ) ? sanitize_email( wp_unslash( $_POST['email'] ) ) : '';
+		$page_url_raw = isset( $_POST['page_url'] ) ? sanitize_text_field( wp_unslash( $_POST['page_url'] ) ) : '';
 
 		if ( ! $token || ! is_email( $email ) ) {
 			wp_send_json_error( array( 'message' => 'A valid email address is required.' ), 400 );
@@ -185,7 +182,8 @@ class BBB_Draft_Resume {
 
 		$wpdb->update( $table, array( 'email' => $email ), array( 'token' => $token ) );
 
-		$resume_url = add_query_arg( 'bbb_resume', $token, self::current_page_url() );
+		$base_url = self::validate_page_url( $page_url_raw );
+		$resume_url = add_query_arg( 'bbb_resume', $token, $base_url );
 
 		$subject = 'Continue your Pinarello Dogma F build — The Cycle Hub';
 		$message = "Hi,\n\nHere's your link to continue your Pinarello Dogma F build where you left off:\n\n" . $resume_url . "\n\nThis link stays valid for 30 days.\n\n— The Cycle Hub";
@@ -199,12 +197,29 @@ class BBB_Draft_Resume {
 		wp_send_json_success( array( 'message' => 'Resume link sent.' ) );
 	}
 
-	private static function current_page_url() {
-		$scheme = is_ssl() ? 'https://' : 'http://';
-		$host   = isset( $_SERVER['HTTP_HOST'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_HOST'] ) ) : '';
-		$uri    = isset( $_SERVER['REQUEST_URI'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '';
-		// Strip any existing bbb_resume param and query string so we start clean.
-		$path = strtok( $uri, '?' );
-		return $scheme . $host . $path;
+	/**
+	 * Only accepts a page_url that belongs to this site's own host.
+	 * Falls back to the site homepage if missing or if it points
+	 * anywhere else, so this can never be used to build a link to an
+	 * external/attacker-controlled domain.
+	 */
+	private static function validate_page_url( $url ) {
+		if ( empty( $url ) ) {
+			return home_url( '/' );
+		}
+
+		$parsed = wp_parse_url( $url );
+		$site_host = wp_parse_url( home_url() , PHP_URL_HOST );
+
+		if ( empty( $parsed['host'] ) || strtolower( $parsed['host'] ) !== strtolower( $site_host ) ) {
+			return home_url( '/' );
+		}
+
+		// Strip any existing query string (e.g. a stale bbb_resume param)
+		// so we always start from a clean page URL.
+		$scheme = isset( $parsed['scheme'] ) ? $parsed['scheme'] : ( is_ssl() ? 'https' : 'http' );
+		$path   = isset( $parsed['path'] ) ? $parsed['path'] : '/';
+
+		return $scheme . '://' . $parsed['host'] . $path;
 	}
 }
