@@ -147,6 +147,18 @@ class BBB_Ajax {
 			}
 		}
 
+		/**
+		 * Fires right after a new build request is fully saved (submission
+		 * row + all its selected options). Used by the event/audit log so
+		 * this class doesn't need to know anything about how logging works.
+		 *
+		 * @param int    $submission_id
+		 * @param int    $template_id
+		 * @param string $reference_code
+		 * @param array  $summary_lines Human-readable option selections, e.g. "Frame Colour: Black".
+		 */
+		do_action( 'bbb_submission_created', $submission_id, $template_id, $reference_code, $summary_lines );
+
 		self::send_notification_email( $template, $reference_code, $customer_name, $customer_email, $customer_whatsapp, $customer_message, $summary_lines );
 
 		wp_send_json_success( array( 'reference_code' => $reference_code ) );
