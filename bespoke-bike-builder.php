@@ -27,16 +27,15 @@ require_once BBB_PLUGIN_DIR . 'includes/class-bbb-manage-options.php';
 require_once BBB_PLUGIN_DIR . 'includes/class-bbb-header-settings.php';
 require_once BBB_PLUGIN_DIR . 'includes/class-bbb-notices-settings.php';
 require_once BBB_PLUGIN_DIR . 'includes/class-bbb-draft-resume.php';
-
-// This loads the Staff Roles & Capabilities system: registers the
-// Custom Build Manager / Sales Staff / Option Manager roles defined
-// in the blueprint, plus their bbb_ capabilities. Self-contained —
-// does not modify any existing class's permission checks.
 require_once BBB_PLUGIN_DIR . 'includes/class-bbb-roles.php';
-
-// This loads the small admin screen that shows role setup status
-// and which staff members currently hold each role.
 require_once BBB_PLUGIN_DIR . 'includes/class-bbb-roles-admin-page.php';
+
+// This loads the Staff Frontend Portal: a [bbb_staff_portal] shortcode
+// that Administrators place on any normal WordPress page. Staff log
+// in there directly (via wp_signon(), the same core authentication as
+// wp-login.php) and never need to visit /wp-admin/ at all. Access is
+// gated by the manage_bbb_submissions / manage_options capabilities.
+require_once BBB_PLUGIN_DIR . 'includes/class-bbb-staff-portal.php';
 
 register_activation_hook( __FILE__, array( 'BBB_Activator', 'activate' ) );
 add_action( 'admin_init', array( 'BBB_Activator', 'maybe_upgrade' ) );
@@ -48,10 +47,12 @@ BBB_Manage_Options::init();
 BBB_Header_Settings::init();
 BBB_Notices_Settings::init();
 BBB_Draft_Resume::init();
-
-// This starts up the Staff Roles system and its admin page.
 BBB_Roles::init();
 BBB_Roles_Admin_Page::init();
+
+// This starts up the Staff Frontend Portal shortcode and its AJAX
+// handlers (login, logout, status updates).
+BBB_Staff_Portal::init();
 
 // This loads the Group 1 responsive layer (progress bar, breakpoint tile
 // columns, sticky mobile nav, expandable summary, Cockpit width/stem split,
