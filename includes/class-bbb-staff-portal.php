@@ -15,9 +15,10 @@
  *
  * Because this class cannot see the internals of class-bbb-ajax.php
  * or the exact submissions table schema, it reads the table's actual
- * columns at runtime (SHOW COLUMNS) rather than hardcoding field
- * names that might not match what's really there — so it displays
- * real data correctly regardless of the exact schema in use.
+ * columns AND actual status values at runtime rather than hardcoding
+ * field names or a status list that might not match what's really
+ * there — so it displays real data correctly regardless of the exact
+ * schema/workflow in use.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -112,12 +113,6 @@ class BBB_Staff_Portal {
 		self::maybe_handle_login_post();
 	}
 
-	/**
-	 * Handles the plain (non-AJAX) POST from the login form above.
-	 * Uses wp_signon() — the same core WordPress authentication used
-	 * by wp-login.php — so staff are real WordPress users signing in
-	 * through a different-looking door, not a separate weaker system.
-	 */
 	private static function maybe_handle_login_post() {
 		if ( empty( $_POST['bbb_staff_login_submit'] ) ) {
 			return;
@@ -146,15 +141,9 @@ class BBB_Staff_Portal {
 	}
 
 	private static function current_url() {
-		global $wp;
 		return home_url( add_query_arg( array(), $_SERVER['REQUEST_URI'] ) );
 	}
 
-	/**
-	 * Renders the logged-in staff dashboard: a submissions table read
-	 * dynamically from whatever columns actually exist on
-	 * wp_bbb_submissions, so it never guesses at a schema it can't see.
-	 */
 	private static function render_dashboard() {
 		global $wpdb;
 		$table = $wpdb->prefix . 'bbb_submissions';
@@ -188,9 +177,6 @@ class BBB_Staff_Portal {
 			return;
 		}
 
-		// Prefer a sensible, readable subset if these common column
-		// names exist; otherwise fall back to showing every column so
-		// nothing is ever silently hidden.
 		$preferred = array( 'id', 'reference', 'customer_name', 'name', 'email', 'whatsapp', 'phone', 'build_type', 'status', 'created_at' );
 		$display_columns = array_values( array_intersect( $preferred, $columns ) );
 		if ( empty( $display_columns ) ) {
@@ -198,6 +184,7 @@ class BBB_Staff_Portal {
 		}
 
 		$has_status_column = in_array( 'status', $columns, true );
+		$status_options = $has_status_column ? self::get_status_options( $table ) : array();
 
 		$order_col = in_array( 'created_at', $columns, true ) ? 'created_at' : ( in_array( 'id', $columns, true ) ? 'id' : $columns[0] );
 		$rows = $wpdb->get_results( "SELECT * FROM $table ORDER BY $order_col DESC LIMIT 200", ARRAY_A );
@@ -222,8 +209,8 @@ class BBB_Staff_Portal {
 				$id_col = in_array( 'id', $columns, true ) ? 'id' : $columns[0];
 				echo '<td>';
 				echo '<select class="bbb-staff-status-select" data-submission-id="' . esc_attr( $row[ $id_col ] ) . '">';
-				foreach ( self::status_options() as $status ) {
-					$selected = ( isset( $row['status'] ) && $row['status'] === $status ) ? 'selected' : '';
+				foreach ( $status_options as $status ) {
+					$selected = ( isset( $row['status'] ) && (string) $row['status'] === (string) $status ) ? 'selected' : '';
 					echo '<option value="' . esc_attr( $status ) . '" ' . $selected . '>' . esc_html( $status ) . '</option>';
 				}
 				echo '</select>';
@@ -235,8 +222,31 @@ class BBB_Staff_Portal {
 		echo '</tbody></table></div>';
 	}
 
-	private static function status_options() {
-		return array( 'New', 'Under Review', 'Revision Requested', 'Approved', 'Deposit Requested', 'Deposit Paid', 'Awaiting Customer Approval', 'Finalised', 'Ordered', 'Ready', 'Completed', 'Cancelled' );
+	/**
+	 * Builds the list of selectable statuses by combining:
+	 *   1. Every distinct value that actually exists in this table's
+	 *      status column right now (in whatever casing/wording your
+	 *      real workflow already uses — e.g. "new", "contacted"), and
+	 *   2. The blueprint's suggested lifecycle stages, for any that
+	 *      aren't already covered, so staff can still move a build
+	 *      forward into a stage nobody has used yet.
+	 * Real existing values always come first and are never renamed,
+	 * so this never breaks or mismatches your current data.
+	 */
+	private static function get_status_options( $table ) {
+		global $wpdb;
+
+		$existing = $wpdb->get_col( "SELECT DISTINCT status FROM $table WHERE status IS NOT NULL AND status != ''" );
+		$existing = array_values( array_unique( array_filter( $existing ) ) );
+
+		$suggested = array( 'New', 'Under Review', 'Revision Requested', 'Approved', 'Deposit Requested', 'Deposit Paid', 'Awaiting Customer Approval', 'Finalised', 'Ordered', 'Ready', 'Completed', 'Cancelled' );
+
+		$existing_lower = array_map( 'strtolower', $existing );
+		$extra = array_filter( $suggested, function ( $s ) use ( $existing_lower ) {
+			return ! in_array( strtolower( $s ), $existing_lower, true );
+		} );
+
+		return array_merge( $existing, array_values( $extra ) );
 	}
 
 	public static function ajax_logout() {
@@ -244,10 +254,6 @@ class BBB_Staff_Portal {
 		wp_send_json_success();
 	}
 
-	/**
-	 * Updates the status column on a submission row, if that column
-	 * exists. Requires manage_bbb_submissions or manage_options.
-	 */
 	public static function ajax_update_status() {
 		if ( ! self::current_user_authorized() ) {
 			wp_send_json_error( array( 'message' => 'Not authorized.' ), 403 );
@@ -269,7 +275,9 @@ class BBB_Staff_Portal {
 		$submission_id = isset( $_POST['submission_id'] ) ? absint( $_POST['submission_id'] ) : 0;
 		$new_status = isset( $_POST['status'] ) ? sanitize_text_field( wp_unslash( $_POST['status'] ) ) : '';
 
-		if ( ! $submission_id || ! in_array( $new_status, self::status_options(), true ) ) {
+		$valid_statuses = self::get_status_options( $table );
+
+		if ( ! $submission_id || ! in_array( $new_status, $valid_statuses, true ) ) {
 			wp_send_json_error( array( 'message' => 'Invalid submission or status.' ), 400 );
 		}
 
