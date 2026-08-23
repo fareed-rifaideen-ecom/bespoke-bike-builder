@@ -31,6 +31,7 @@ class BBB_Activator {
 		self::create_submissions_table();
 		self::create_submission_items_table();
 		self::create_submission_events_table();
+		self::create_compatibility_rules_table();
 
 		self::seed_default_template();
 		self::seed_default_option_groups_and_options();
@@ -49,6 +50,7 @@ class BBB_Activator {
 
 		self::create_options_table();
 		self::create_submission_events_table();
+		self::create_compatibility_rules_table();
 	}
 
 	/**
@@ -227,6 +229,41 @@ class BBB_Activator {
 			created_at DATETIME NOT NULL,
 			PRIMARY KEY  (id),
 			KEY submission_id (submission_id)
+		) {$charset_collate};";
+
+		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+		dbDelta( $sql );
+	}
+
+	/**
+	 * Creates the wp_bbb_compatibility_rules table.
+	 *
+	 * Implements Blueprint Section 21 (Option Management and
+	 * Compatibility): each row is one rule of the form "IF
+	 * trigger_option_id is selected, THEN allowed_option_id remains
+	 * an allowed choice within target_group_id." Managed entirely
+	 * from the Manage Options screen (class-bbb-manage-options.php)
+	 * and read by the customer-facing builder (class-bbb-shortcodes.php)
+	 * to know which options to restrict. If a group has no rows here,
+	 * none of its options are restricted - existing behaviour is
+	 * unaffected until an Administrator creates a rule.
+	 */
+	private static function create_compatibility_rules_table() {
+
+		global $wpdb;
+
+		$table_name      = $wpdb->prefix . 'bbb_compatibility_rules';
+		$charset_collate = $wpdb->get_charset_collate();
+
+		$sql = "CREATE TABLE {$table_name} (
+			id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+			trigger_option_id BIGINT UNSIGNED NOT NULL,
+			target_group_id BIGINT UNSIGNED NOT NULL,
+			allowed_option_id BIGINT UNSIGNED NOT NULL,
+			created_at DATETIME NOT NULL,
+			PRIMARY KEY  (id),
+			KEY trigger_option_id (trigger_option_id),
+			KEY target_group_id (target_group_id)
 		) {$charset_collate};";
 
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
