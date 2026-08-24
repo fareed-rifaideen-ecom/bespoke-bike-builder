@@ -47,6 +47,14 @@
  * a data-image-url attribute so builder.js can update a live preview
  * image on the left/top panel as the customer makes selections. See
  * assets/css/builder.css for the breakpoint behaviour.
+ *
+ * As of this update, the image panel also includes a live "selected
+ * summary" list directly beneath the preview image, showing every
+ * option group the customer has answered so far (label + chosen
+ * value), with a small thumbnail chip next to any selection that has
+ * a photo. This is kept updated by builder.js in real time - it is
+ * the same style of row used later on the Review step, just visible
+ * throughout the whole build instead of only at the end.
  */
 
 // If this file is opened directly in a browser (not through WordPress), stop everything.
@@ -349,14 +357,14 @@ class BBB_Shortcodes {
 			'bbb-builder-css',
 			BBB_PLUGIN_URL . 'assets/css/builder.css',
 			array(),
-			'1.8.0'
+			'1.9.0'
 		);
 
 		wp_enqueue_script(
 			'bbb-builder-js',
 			BBB_PLUGIN_URL . 'assets/js/builder.js',
 			array(),
-			'1.8.0',
+			'1.9.0',
 			true
 		);
 
@@ -496,6 +504,7 @@ class BBB_Shortcodes {
 					<div class="bbb-selected-image bbb-image-panel--empty">
 						<span class="bbb-image-panel-placeholder">Select options to preview your build</span>
 					</div>
+					<div class="bbb-selected-summary"></div>
 				</div>
 
 				<div class="bbb-builder-form-panel">
