@@ -8,15 +8,60 @@
  * states, buttons, and focus outlines. Any tile whose option has a
  * product photo attached shows that photo as an image card; tiles
  * without one stay simple text cards.
+ *
+ * As of this update, the wizard uses a two-column "Split Builder"
+ * layout (Blueprint Section 31): a live preview image panel plus a
+ * form panel containing the actual steps. The base rules below are
+ * mobile-first (stacked, image above form); the breakpoints at the
+ * bottom of this file switch to a real side-by-side split at
+ * desktop widths and a shorter banner at tablet widths. These are
+ * kept in this file (rather than builder-responsive.css) so this
+ * change doesn't depend on that file's exact current contents.
  */
 
 .bbb-builder-placeholder {
-	max-width: 760px;
+	max-width: 1120px;
 	background: #141414;
 	color: #e8e8e8;
 	padding: 32px;
 	border-radius: 12px;
 	box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+}
+
+.bbb-builder-columns {
+	display: flex;
+	flex-direction: column;
+	gap: 24px;
+}
+
+.bbb-builder-image-panel {
+	flex-shrink: 0;
+}
+
+.bbb-selected-image {
+	width: 100%;
+	height: 220px;
+	border-radius: 10px;
+	background-color: #0d0d0d;
+	background-size: cover;
+	background-position: center;
+	background-repeat: no-repeat;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border: 1px solid #262626;
+}
+
+.bbb-image-panel-placeholder {
+	color: #6b7280;
+	font-size: 14px;
+	text-align: center;
+	padding: 0 24px;
+}
+
+.bbb-builder-form-panel {
+	min-width: 0;
+	flex: 1;
 }
 
 .bbb-builder-placeholder h2 {
@@ -261,4 +306,53 @@
 .bbb-back-button:hover {
 	border-color: #555555;
 	color: #ffffff;
+}
+
+/* =========================================================
+   Split Builder responsive breakpoints (Blueprint Section 31).
+   Kept here rather than in builder-responsive.css so this
+   change never depends on that file's exact current content.
+   Desktop (>=1024px): side-by-side split, image sticky on the
+   left. Tablet (768-1023px): stacked, wider banner image.
+   Mobile (<768px): stacked, compact banner image (this is also
+   the layout used by default above, mobile-first).
+   ========================================================= */
+
+@media (min-width: 1024px) {
+	.bbb-builder-columns {
+		flex-direction: row;
+		align-items: flex-start;
+		gap: 32px;
+	}
+
+	.bbb-builder-image-panel {
+		width: 38%;
+		max-width: 380px;
+		position: sticky;
+		top: 24px;
+	}
+
+	.bbb-selected-image {
+		height: 420px;
+	}
+
+	.bbb-builder-form-panel {
+		width: 62%;
+	}
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+	.bbb-builder-columns {
+		flex-direction: column;
+	}
+
+	.bbb-selected-image {
+		height: 280px;
+	}
+}
+
+@media (max-width: 767px) {
+	.bbb-selected-image {
+		height: 180px;
+	}
 }
