@@ -39,6 +39,14 @@
  * full availability whenever no rule for that group currently
  * applies. That enforcement logic lives in builder.js, which has not
  * been reviewed as part of this change - this only adds the data.
+ *
+ * As of this update, the wizard is also wrapped in a two-column
+ * "Split Builder" layout per Blueprint Section 31 (Desktop: image
+ * left, form right; Tablet: image banner, form below; Mobile:
+ * compact single column). Each image-bearing tile now also carries
+ * a data-image-url attribute so builder.js can update a live preview
+ * image on the left/top panel as the customer makes selections. See
+ * assets/css/builder.css for the breakpoint behaviour.
  */
 
 // If this file is opened directly in a browser (not through WordPress), stop everything.
@@ -341,14 +349,14 @@ class BBB_Shortcodes {
 			'bbb-builder-css',
 			BBB_PLUGIN_URL . 'assets/css/builder.css',
 			array(),
-			'1.7.0'
+			'1.8.0'
 		);
 
 		wp_enqueue_script(
 			'bbb-builder-js',
 			BBB_PLUGIN_URL . 'assets/js/builder.js',
 			array(),
-			'1.7.0',
+			'1.8.0',
 			true
 		);
 
@@ -482,114 +490,132 @@ class BBB_Shortcodes {
 
 		<div class="bbb-builder-placeholder" data-total-option-steps="<?php echo esc_attr( $total_option_steps ); ?>" data-template-id="<?php echo esc_attr( $template['id'] ); ?>" data-ajax-url="<?php echo esc_attr( $ajax_url ); ?>" data-nonce="<?php echo esc_attr( $nonce ); ?>" data-compatibility-rules="<?php echo esc_attr( wp_json_encode( $compatibility_rules ) ); ?>">
 
-			<h2><?php echo esc_html( $template['name'] ); ?></h2>
+			<div class="bbb-builder-columns">
 
-			<p class="bbb-progress">Step 1 of <?php echo esc_html( $total_option_steps ); ?></p>
+				<div class="bbb-builder-image-panel">
+					<div class="bbb-selected-image bbb-image-panel--empty">
+						<span class="bbb-image-panel-placeholder">Select options to preview your build</span>
+					</div>
+				</div>
 
-			<?php foreach ( $groups as $index => $group ) : ?>
+				<div class="bbb-builder-form-panel">
 
-				<?php
-				$options = $wpdb->get_results(
-					$wpdb->prepare(
-						"SELECT * FROM {$options_table} WHERE group_id = %d AND is_active = 1 ORDER BY sort_order ASC",
-						$group['id']
-					),
-					ARRAY_A
-				);
+					<h2><?php echo esc_html( $template['name'] ); ?></h2>
 
-				$is_first_step = ( 0 === $index );
-				?>
+					<p class="bbb-progress">Step 1 of <?php echo esc_html( $total_option_steps ); ?></p>
 
-				<div class="bbb-step<?php echo $is_first_step ? ' bbb-step-active' : ''; ?>" data-step-index="<?php echo esc_attr( $index ); ?>" data-group-id="<?php echo esc_attr( $group['id'] ); ?>" data-group-label="<?php echo esc_attr( $group['label'] ); ?>">
+					<?php foreach ( $groups as $index => $group ) : ?>
 
-					<h3><?php echo esc_html( $group['label'] ); ?></h3>
+						<?php
+						$options = $wpdb->get_results(
+							$wpdb->prepare(
+								"SELECT * FROM {$options_table} WHERE group_id = %d AND is_active = 1 ORDER BY sort_order ASC",
+								$group['id']
+							),
+							ARRAY_A
+						);
 
-					<?php if ( 'dropdown' === $group['display_type'] ) : ?>
+						$is_first_step = ( 0 === $index );
+						?>
 
-						<select class="bbb-dropdown">
-							<option value="">Select an option</option>
-							<?php foreach ( $options as $option ) : ?>
-								<option value="<?php echo esc_attr( $option['id'] ); ?>" data-label="<?php echo esc_attr( $option['label'] ); ?>">
-									<?php echo esc_html( $option['label'] ); ?>
-								</option>
-							<?php endforeach; ?>
-						</select>
+						<div class="bbb-step<?php echo $is_first_step ? ' bbb-step-active' : ''; ?>" data-step-index="<?php echo esc_attr( $index ); ?>" data-group-id="<?php echo esc_attr( $group['id'] ); ?>" data-group-label="<?php echo esc_attr( $group['label'] ); ?>">
 
-					<?php else : ?>
+							<h3><?php echo esc_html( $group['label'] ); ?></h3>
 
-						<div class="bbb-tile-group">
-							<?php foreach ( $options as $option ) : ?>
+							<?php if ( 'dropdown' === $group['display_type'] ) : ?>
 
-								<?php
-								$thumb_url = ! empty( $option['image_id'] )
-									? wp_get_attachment_image_url( $option['image_id'], 'medium' )
-									: '';
-								?>
+								<select class="bbb-dropdown">
+									<option value="">Select an option</option>
+									<?php foreach ( $options as $option ) : ?>
+										<option value="<?php echo esc_attr( $option['id'] ); ?>" data-label="<?php echo esc_attr( $option['label'] ); ?>">
+											<?php echo esc_html( $option['label'] ); ?>
+										</option>
+									<?php endforeach; ?>
+								</select>
 
-								<div class="bbb-tile<?php echo $thumb_url ? ' bbb-tile-with-image' : ''; ?>" data-option-id="<?php echo esc_attr( $option['id'] ); ?>" data-value="<?php echo esc_attr( $option['label'] ); ?>">
+							<?php else : ?>
 
-									<?php if ( $thumb_url ) : ?>
-										<div class="bbb-tile-image" style="background-image:url('<?php echo esc_url( $thumb_url ); ?>');"></div>
-									<?php endif; ?>
+								<div class="bbb-tile-group">
+									<?php foreach ( $options as $option ) : ?>
 
-									<span class="bbb-tile-label"><?php echo esc_html( $option['label'] ); ?></span>
+										<?php
+										$thumb_url = ! empty( $option['image_id'] )
+											? wp_get_attachment_image_url( $option['image_id'], 'medium' )
+											: '';
 
+										$preview_url = ! empty( $option['image_id'] )
+											? wp_get_attachment_image_url( $option['image_id'], 'large' )
+											: '';
+										?>
+
+										<div class="bbb-tile<?php echo $thumb_url ? ' bbb-tile-with-image' : ''; ?>" data-option-id="<?php echo esc_attr( $option['id'] ); ?>" data-value="<?php echo esc_attr( $option['label'] ); ?>" data-image-url="<?php echo esc_url( $preview_url ); ?>">
+
+											<?php if ( $thumb_url ) : ?>
+												<div class="bbb-tile-image" style="background-image:url('<?php echo esc_url( $thumb_url ); ?>');"></div>
+											<?php endif; ?>
+
+											<span class="bbb-tile-label"><?php echo esc_html( $option['label'] ); ?></span>
+
+										</div>
+
+									<?php endforeach; ?>
 								</div>
 
-							<?php endforeach; ?>
+							<?php endif; ?>
+
 						</div>
 
-					<?php endif; ?>
+					<?php endforeach; ?>
+
+					<div class="bbb-step bbb-review-step" data-step-index="<?php echo esc_attr( $total_option_steps ); ?>">
+
+						<h3>Review Your Build</h3>
+
+						<div class="bbb-review-content"></div>
+
+					</div>
+
+					<div class="bbb-step bbb-lead-step" data-step-index="<?php echo esc_attr( $total_option_steps + 1 ); ?>">
+
+						<h3>Your Details</h3>
+
+						<div class="bbb-lead-form-fields">
+
+							<div class="bbb-lead-field">
+								<label for="bbb-lead-name">Full Name</label>
+								<input type="text" id="bbb-lead-name" class="bbb-lead-input" placeholder="Your full name">
+							</div>
+
+							<div class="bbb-lead-field">
+								<label for="bbb-lead-email">Email Address</label>
+								<input type="email" id="bbb-lead-email" class="bbb-lead-input" placeholder="you@example.com">
+							</div>
+
+							<div class="bbb-lead-field">
+								<label for="bbb-lead-phone">Phone Number</label>
+								<input type="tel" id="bbb-lead-phone" class="bbb-lead-input" placeholder="+971 50 000 0000">
+							</div>
+
+							<div class="bbb-lead-field">
+								<label for="bbb-lead-message">Additional Information or Remarks (optional)</label>
+								<textarea id="bbb-lead-message" class="bbb-lead-input bbb-lead-textarea" rows="4" placeholder="Anything else we should know about your build?"></textarea>
+							</div>
+
+							<p class="bbb-lead-error" style="display:none;"></p>
+
+						</div>
+
+						<div class="bbb-success-message" style="display:none;"></div>
+
+					</div>
+
+					<div class="bbb-nav">
+						<button type="button" class="bbb-back-button" style="display:none;">Back</button>
+						<button type="button" class="bbb-next-button" disabled>Next</button>
+					</div>
 
 				</div>
 
-			<?php endforeach; ?>
-
-			<div class="bbb-step bbb-review-step" data-step-index="<?php echo esc_attr( $total_option_steps ); ?>">
-
-				<h3>Review Your Build</h3>
-
-				<div class="bbb-review-content"></div>
-
-			</div>
-
-			<div class="bbb-step bbb-lead-step" data-step-index="<?php echo esc_attr( $total_option_steps + 1 ); ?>">
-
-				<h3>Your Details</h3>
-
-				<div class="bbb-lead-form-fields">
-
-					<div class="bbb-lead-field">
-						<label for="bbb-lead-name">Full Name</label>
-						<input type="text" id="bbb-lead-name" class="bbb-lead-input" placeholder="Your full name">
-					</div>
-
-					<div class="bbb-lead-field">
-						<label for="bbb-lead-email">Email Address</label>
-						<input type="email" id="bbb-lead-email" class="bbb-lead-input" placeholder="you@example.com">
-					</div>
-
-					<div class="bbb-lead-field">
-						<label for="bbb-lead-phone">Phone Number</label>
-						<input type="tel" id="bbb-lead-phone" class="bbb-lead-input" placeholder="+971 50 000 0000">
-					</div>
-
-					<div class="bbb-lead-field">
-						<label for="bbb-lead-message">Additional Information or Remarks (optional)</label>
-						<textarea id="bbb-lead-message" class="bbb-lead-input bbb-lead-textarea" rows="4" placeholder="Anything else we should know about your build?"></textarea>
-					</div>
-
-					<p class="bbb-lead-error" style="display:none;"></p>
-
-				</div>
-
-				<div class="bbb-success-message" style="display:none;"></div>
-
-			</div>
-
-			<div class="bbb-nav">
-				<button type="button" class="bbb-back-button" style="display:none;">Back</button>
-				<button type="button" class="bbb-next-button" disabled>Next</button>
 			</div>
 
 		</div>
