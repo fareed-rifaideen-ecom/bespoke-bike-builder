@@ -16,14 +16,18 @@
  * options are narrowed down to only the options that rule allows.
  * Rules come from the wizard's data-compatibility-rules attribute.
  *
- * As of this update, this also keeps a live "selected image" preview
- * updated in the left/top panel of the Split Builder layout
- * (Blueprint Section 31): whenever the customer picks a tile that has
- * a data-image-url, that photo replaces the current preview image.
- * If nothing with a photo is currently selected (e.g. only text
- * tiles or dropdowns have been picked so far), the panel shows its
- * default placeholder text instead. This never affects saving or
- * validation - it is purely a visual preview.
+ * As of the Split Builder update, this also keeps a live "selected
+ * image" preview updated in the left/top panel (Blueprint Section
+ * 31): whenever the customer picks a tile that has a data-image-url,
+ * that photo replaces the current preview image.
+ *
+ * As of this update, the image panel also shows a live "selected
+ * summary" list directly beneath the preview image: one row per
+ * option group the customer has answered so far, showing that
+ * group's label and chosen value, with a small thumbnail chip next
+ * to any row whose selection has a photo. This uses the exact same
+ * selections data as the later Review step - it is simply rendered
+ * continuously instead of only once, at the end.
  */
 
 document.addEventListener( 'DOMContentLoaded', function () {
@@ -49,10 +53,11 @@ var emailInput   = wizard.querySelector( '#bbb-lead-email' );
 var phoneInput   = wizard.querySelector( '#bbb-lead-phone' );
 var messageInput = wizard.querySelector( '#bbb-lead-message' );
 
-// The live preview panel from the Split Builder layout. May not
-// exist if an older cached version of the page markup is showing,
-// so every use of this below checks for it first.
-var selectedImagePanel = wizard.querySelector( '.bbb-selected-image' );
+// The live preview panel and summary list from the Split Builder
+// layout. May not exist if an older cached version of the page
+// markup is showing, so every use of these below checks first.
+var selectedImagePanel   = wizard.querySelector( '.bbb-selected-image' );
+var selectedSummaryPanel = wizard.querySelector( '.bbb-selected-summary' );
 
 // These come from PHP via data-* attributes on the wizard container,
 // so JavaScript can safely talk to WordPress in the background.
@@ -332,6 +337,57 @@ selectedImagePanel.innerHTML = '<span class="bbb-image-panel-placeholder">Select
 }
 
 /**
+ * Renders the always-visible "your build so far" list under the
+ * preview image, one row per option step (skipping steps hidden by
+ * Frame Only). Unanswered steps show "Not selected yet" so the
+ * customer can see at a glance what is still outstanding, exactly
+ * like the later Review step but visible throughout the whole flow.
+ * Any row whose selection has a photo gets a small thumbnail chip.
+ */
+function refreshSelectedSummaryPanel() {
+
+if ( ! selectedSummaryPanel ) {
+return;
+}
+
+var rowsHtml = '';
+
+for ( var i = 0; i < totalOptionSteps; i++ ) {
+
+if ( shouldSkipStep( i ) ) {
+continue;
+}
+
+var step      = steps[ i ];
+var label     = step.dataset.groupLabel;
+var selection = selections[ i ];
+
+var chipHtml = '';
+var valueHtml;
+
+if ( selection ) {
+
+valueHtml = selection.label;
+
+if ( selection.imageUrl ) {
+chipHtml = '<span class="bbb-summary-row-chip" style="background-image:url(\'' + selection.imageUrl + '\')"></span>';
+}
+
+} else {
+valueHtml = 'Not selected yet';
+}
+
+rowsHtml += '<div class="bbb-summary-row' + ( selection ? '' : ' bbb-summary-row--empty' ) + '">' +
+chipHtml +
+'<span class="bbb-summary-row-label">' + label + '</span>' +
+'<span class="bbb-summary-row-value">' + valueHtml + '</span>' +
+'</div>';
+}
+
+selectedSummaryPanel.innerHTML = rowsHtml;
+}
+
+/**
  * Checks whether the Name, Email, and Phone fields are all
  * filled in, and that the email looks like a valid address.
  * The Remarks field is always optional and never affects this.
@@ -487,9 +543,10 @@ clearSkippedSelectionsIfNeeded();
 // steps, and may invalidate a selection already made there.
 refreshCompatibilityRestrictions();
 
-// Keep the Split Builder preview image in sync with whatever
-// is now selected.
+// Keep the Split Builder preview image and summary list in
+// sync with whatever is now selected.
 refreshSelectedImagePanel();
+refreshSelectedSummaryPanel();
 
 // Only enable Next if this tile's step is the one
 // currently visible on screen.
@@ -533,8 +590,9 @@ refreshCompatibilityRestrictions();
 
 // Dropdown steps never carry a photo, but a previous tile
 // selection might still need to remain visible, so refresh
-// the panel anyway for consistency.
+// the panel and summary anyway for consistency.
 refreshSelectedImagePanel();
+refreshSelectedSummaryPanel();
 
 if ( index === currentIndex ) {
 nextButton.disabled = ! selections[ index ];
@@ -701,11 +759,12 @@ currentIndex = prevIndex;
 showStep( currentIndex );
 } );
 
-// Apply any compatibility rules and the image panel once up front
-// (both are no-ops if nothing has been selected yet, but keeps
-// behaviour consistent), then show the very first step when the
-// page loads.
+// Apply any compatibility rules, the image panel, and the summary
+// list once up front (all no-ops if nothing has been selected yet,
+// but keeps behaviour consistent), then show the very first step
+// when the page loads.
 refreshCompatibilityRestrictions();
 refreshSelectedImagePanel();
+refreshSelectedSummaryPanel();
 showStep( currentIndex );
 } );
