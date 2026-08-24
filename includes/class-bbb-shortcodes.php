@@ -28,6 +28,17 @@
  * Navigation, the Review summary, the lead form validation, and the
  * actual save-to-database submission are all handled by
  * assets/js/builder.js together with includes/class-bbb-ajax.php.
+ *
+ * As of this update, the builder placeholder also carries a
+ * data-compatibility-rules attribute: a JSON map of
+ * "trigger_option_id" -> { target_group_id, allowed_option_ids: [...] },
+ * built from whatever rules staff have configured on the Manage
+ * Options screen (Blueprint Section 21). builder.js is expected to
+ * read this attribute and hide/disable options in a target group
+ * whenever a trigger option elsewhere is selected, and to restore
+ * full availability whenever no rule for that group currently
+ * applies. That enforcement logic lives in builder.js, which has not
+ * been reviewed as part of this change - this only adds the data.
  */
 
 // If this file is opened directly in a browser (not through WordPress), stop everything.
@@ -140,120 +151,120 @@ class BBB_Shortcodes {
 		?>
 		<style id="bbb-dark-page-theme">
 
-			body.bbb-dark-page {
-				background-color: #0d0d0d !important;
-			}
+		body.bbb-dark-page {
+			background-color: #0d0d0d !important;
+		}
 
-			body.bbb-dark-page #wrapper,
-			body.bbb-dark-page #main,
-			body.bbb-dark-page .page-wrapper,
-			body.bbb-dark-page .container {
-				background-color: #0d0d0d !important;
-			}
+		body.bbb-dark-page #wrapper,
+		body.bbb-dark-page #main,
+		body.bbb-dark-page .page-wrapper,
+		body.bbb-dark-page .container {
+			background-color: #0d0d0d !important;
+		}
 
-			<?php if ( 'custom' === self::$header_mode ) : ?>
+		<?php if ( 'custom' === self::$header_mode ) : ?>
 
-				/* Custom header mode: hide the theme's own header/top-bar
-				   entirely (the footer is deliberately left alone). */
-				body.bbb-dark-page #header,
-				body.bbb-dark-page .header-wrapper,
-				body.bbb-dark-page #masthead,
-				body.bbb-dark-page .top-bar,
-				body.bbb-dark-page #top-bar {
-					display: none !important;
-				}
+		/* Custom header mode: hide the theme's own header/top-bar
+		   entirely (the footer is deliberately left alone). */
+		body.bbb-dark-page #header,
+		body.bbb-dark-page .header-wrapper,
+		body.bbb-dark-page #masthead,
+		body.bbb-dark-page .top-bar,
+		body.bbb-dark-page #top-bar {
+			display: none !important;
+		}
 
-				/* Our own replacement header: a logo row above a nav bar. */
-				.bbb-custom-header {
-					background-color: #0d0d0d;
-				}
+		/* Our own replacement header: a logo row above a nav bar. */
+		.bbb-custom-header {
+			background-color: #0d0d0d;
+		}
 
-				.bbb-custom-header-logos {
-					display: flex;
-					align-items: center;
-					justify-content: center;
-					gap: 20px;
-					padding: 20px;
-					background-color: #141414;
-				}
+		.bbb-custom-header-logos {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			gap: 20px;
+			padding: 20px;
+			background-color: #141414;
+		}
 
-				.bbb-custom-logo {
-					height: 44px;
-					width: auto;
-					display: block;
-				}
+		.bbb-custom-logo {
+			height: 44px;
+			width: auto;
+			display: block;
+		}
 
-				.bbb-custom-logo-divider {
-					color: #555555;
-					font-size: 22px;
-					line-height: 1;
-				}
+		.bbb-custom-logo-divider {
+			color: #555555;
+			font-size: 22px;
+			line-height: 1;
+		}
 
-				.bbb-custom-header-nav {
-					display: flex;
-					align-items: center;
-					justify-content: center;
-					gap: 32px;
-					flex-wrap: wrap;
-					background-color: #000000;
-					padding: 14px 20px;
-				}
+		.bbb-custom-header-nav {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			gap: 32px;
+			flex-wrap: wrap;
+			background-color: #000000;
+			padding: 14px 20px;
+		}
 
-				.bbb-custom-header-nav a {
-					color: #e8e8e8;
-					text-decoration: none;
-					font-size: 13px;
-					font-weight: bold;
-					text-transform: uppercase;
-					letter-spacing: 0.06em;
-				}
+		.bbb-custom-header-nav a {
+			color: #e8e8e8;
+			text-decoration: none;
+			font-size: 13px;
+			font-weight: bold;
+			text-transform: uppercase;
+			letter-spacing: 0.06em;
+		}
 
-				.bbb-custom-header-nav a:hover {
-					color: #ffffff;
-				}
+		.bbb-custom-header-nav a:hover {
+			color: #ffffff;
+		}
 
-			<?php else : ?>
+		<?php else : ?>
 
-				/* Default dark mode: keep the theme's own header/menu, but
-				   recolour it dark instead of hiding it. */
-				body.bbb-dark-page .top-bar,
-				body.bbb-dark-page #top-bar {
-					background-color: #1a1a1a !important;
-					border-color: #262626 !important;
-				}
+		/* Default dark mode: keep the theme's own header/menu, but
+		   recolour it dark instead of hiding it. */
+		body.bbb-dark-page .top-bar,
+		body.bbb-dark-page #top-bar {
+			background-color: #1a1a1a !important;
+			border-color: #262626 !important;
+		}
 
-				body.bbb-dark-page #header,
-				body.bbb-dark-page .header-wrapper,
-				body.bbb-dark-page #masthead {
-					background-color: #141414 !important;
-					border-color: #262626 !important;
-				}
+		body.bbb-dark-page #header,
+		body.bbb-dark-page .header-wrapper,
+		body.bbb-dark-page #masthead {
+			background-color: #141414 !important;
+			border-color: #262626 !important;
+		}
 
-				body.bbb-dark-page #header a,
-				body.bbb-dark-page .header-nav-main a,
-				body.bbb-dark-page .nav > li > a,
-				body.bbb-dark-page .nav-dropdown a {
-					color: #e8e8e8 !important;
-				}
+		body.bbb-dark-page #header a,
+		body.bbb-dark-page .header-nav-main a,
+		body.bbb-dark-page .nav > li > a,
+		body.bbb-dark-page .nav-dropdown a {
+			color: #e8e8e8 !important;
+		}
 
-				body.bbb-dark-page #header a:hover,
-				body.bbb-dark-page .header-nav-main a:hover {
-					color: #ffffff !important;
-				}
+		body.bbb-dark-page #header a:hover,
+		body.bbb-dark-page .header-nav-main a:hover {
+			color: #ffffff !important;
+		}
 
-				body.bbb-dark-page .nav-dropdown,
-				body.bbb-dark-page .sub-menu {
-					background-color: #1e1e1e !important;
-					border-color: #333333 !important;
-				}
+		body.bbb-dark-page .nav-dropdown,
+		body.bbb-dark-page .sub-menu {
+			background-color: #1e1e1e !important;
+			border-color: #333333 !important;
+		}
 
-				body.bbb-dark-page #header .icon,
-				body.bbb-dark-page #header svg {
-					color: #e8e8e8 !important;
-					fill: #e8e8e8 !important;
-				}
+		body.bbb-dark-page #header .icon,
+		body.bbb-dark-page #header svg {
+			color: #e8e8e8 !important;
+			fill: #e8e8e8 !important;
+		}
 
-			<?php endif; ?>
+		<?php endif; ?>
 
 		</style>
 		<?php
@@ -345,6 +356,72 @@ class BBB_Shortcodes {
 	}
 
 	/**
+	 * Builds a JSON-ready array describing every compatibility rule
+	 * currently configured (Blueprint Section 21), for the given
+	 * template's option groups. Shape:
+	 *
+	 *   {
+	 *     "<trigger_option_id>": {
+	 *       "target_group_id": <int>,
+	 *       "allowed_option_ids": [<int>, <int>, ...]
+	 *     },
+	 *     ...
+	 *   }
+	 *
+	 * If no rules have been configured anywhere, this returns an
+	 * empty array/object, so existing behaviour (every active option
+	 * always available) is completely unaffected until an
+	 * Administrator actually creates a rule.
+	 *
+	 * @param array $group_ids IDs of the option groups belonging to this template.
+	 * @return array
+	 */
+	private static function get_compatibility_rules_map( $group_ids ) {
+
+		if ( empty( $group_ids ) ) {
+			return array();
+		}
+
+		global $wpdb;
+
+		$rules_table = $wpdb->prefix . 'bbb_compatibility_rules';
+
+		$table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $rules_table ) ) === $rules_table;
+
+		if ( ! $table_exists ) {
+			return array();
+		}
+
+		$placeholders = implode( ',', array_fill( 0, count( $group_ids ), '%d' ) );
+
+		$rows = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT trigger_option_id, target_group_id, allowed_option_id FROM {$rules_table} WHERE target_group_id IN ({$placeholders})",
+				$group_ids
+			),
+			ARRAY_A
+		);
+
+		$map = array();
+
+		foreach ( $rows as $row ) {
+
+			$trigger_id = (string) $row['trigger_option_id'];
+
+			if ( ! isset( $map[ $trigger_id ] ) ) {
+				$map[ $trigger_id ] = array(
+					'target_group_id'    => (int) $row['target_group_id'],
+					'allowed_option_ids' => array(),
+				);
+			}
+
+			$map[ $trigger_id ]['allowed_option_ids'][] = (int) $row['allowed_option_id'];
+		}
+
+		return $map;
+	}
+
+	/**
 	 * Outputs the full step-by-step builder for a given template.
 	 */
 	public static function render_builder( $atts ) {
@@ -397,10 +474,13 @@ class BBB_Shortcodes {
 		$ajax_url = admin_url( 'admin-ajax.php' );
 		$nonce    = wp_create_nonce( 'bbb_submit_build' );
 
+		$group_ids           = wp_list_pluck( $groups, 'id' );
+		$compatibility_rules = self::get_compatibility_rules_map( $group_ids );
+
 		ob_start();
 		?>
 
-		<div class="bbb-builder-placeholder" data-total-option-steps="<?php echo esc_attr( $total_option_steps ); ?>" data-template-id="<?php echo esc_attr( $template['id'] ); ?>" data-ajax-url="<?php echo esc_attr( $ajax_url ); ?>" data-nonce="<?php echo esc_attr( $nonce ); ?>">
+		<div class="bbb-builder-placeholder" data-total-option-steps="<?php echo esc_attr( $total_option_steps ); ?>" data-template-id="<?php echo esc_attr( $template['id'] ); ?>" data-ajax-url="<?php echo esc_attr( $ajax_url ); ?>" data-nonce="<?php echo esc_attr( $nonce ); ?>" data-compatibility-rules="<?php echo esc_attr( wp_json_encode( $compatibility_rules ) ); ?>">
 
 			<h2><?php echo esc_html( $template['name'] ); ?></h2>
 
