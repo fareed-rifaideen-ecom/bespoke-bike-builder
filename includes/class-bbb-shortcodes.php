@@ -59,11 +59,12 @@
  * As of this update, assets/js/builder-thumbnail-gallery.js is also
  * enqueued. It is a fully additive, self-contained script (it
  * injects its own CSS and never edits builder.js or this file's
- * markup) that renders a clickable thumbnail strip - one thumbnail
- * per option photo available in the currently active tile step -
- * directly under the preview image, plus a click-to-enlarge
- * lightbox for those thumbnails and for the existing selected-summary
- * chips above. See that file for details.
+ * markup) that locks the main preview image to the customer's Frame
+ * Colour selection and shows a temporary hover preview of any other
+ * photo-bearing option when the mouse is over it. See that file for
+ * details. Its enqueued version number is bumped on every change to
+ * that file so browsers and any page-caching layer fetch the latest
+ * copy instead of serving a stale cached one.
  */
 
 // If this file is opened directly in a browser (not through WordPress), stop everything.
@@ -377,15 +378,17 @@ array(),
 true
 );
 
-// Additive-only script for the thumbnail gallery + click-to-enlarge
-// lightbox (Blueprint follow-up). It injects its own CSS and never
+// Additive-only script for the Frame Colour hero lock + hover
+// preview (Blueprint follow-up). It injects its own CSS and never
 // touches builder.js or the markup above, so it is safe to load
-// independently and does not need a version bump on the files above.
+// independently. IMPORTANT: bump this version string every time
+// builder-thumbnail-gallery.js changes, so browsers and any page
+// cache fetch the new file instead of reusing a stale cached copy.
 wp_enqueue_script(
 'bbb-thumbnail-gallery',
 BBB_PLUGIN_URL . 'assets/js/builder-thumbnail-gallery.js',
 array(),
-'1.0.0',
+'2.0.0',
 true
 );
 
