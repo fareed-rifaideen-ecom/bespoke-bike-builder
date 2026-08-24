@@ -356,3 +356,56 @@
 		height: 180px;
 	}
 }
+
+/* =========================================================
+   Live "your build so far" summary list (Option C), shown
+   directly under the preview image in the Split Builder image
+   panel. Reuses the same visual language as the later Review
+   step rows, but updates continuously as the customer selects
+   options rather than only appearing at the end.
+   ========================================================= */
+
+.bbb-selected-summary {
+	margin-top: 16px;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.bbb-summary-row {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	background: #1b1b1b;
+	border: 1px solid #2c2c2c;
+	border-radius: 8px;
+	padding: 8px 12px;
+	font-size: 13px;
+}
+
+.bbb-summary-row--empty {
+	opacity: 0.55;
+}
+
+.bbb-summary-row-chip {
+	flex-shrink: 0;
+	width: 28px;
+	height: 28px;
+	border-radius: 6px;
+	background-size: cover;
+	background-position: center;
+	background-color: #0d0d0d;
+	border: 1px solid #333333;
+}
+
+.bbb-summary-row-label {
+	color: #9aa5b1;
+	flex-shrink: 0;
+}
+
+.bbb-summary-row-value {
+	color: #ffffff;
+	font-weight: bold;
+	margin-left: auto;
+	text-align: right;
+}
