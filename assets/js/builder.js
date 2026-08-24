@@ -9,17 +9,21 @@
  * also includes an optional "Additional Information or Remarks"
  * message, which is never required for the Submit button to enable.
  *
- * As of this update, this also enforces any compatibility rules an
- * Administrator has configured on the Manage Options screen
- * (Blueprint Section 21): whenever a selection in one step is the
- * "trigger" for a rule, the target step's tiles/dropdown options are
- * narrowed down to only the options that rule allows. If the
- * customer had already picked something in that target step that is
- * no longer allowed, that selection is cleared automatically. Rules
- * come from the wizard's data-compatibility-rules attribute, which
- * PHP builds from wp_bbb_compatibility_rules - if no rules exist for
- * a group, every one of its options stays available, exactly as
- * before this change.
+ * As of the compatibility-rules update, this also enforces any
+ * compatibility rules an Administrator has configured on the Manage
+ * Options screen (Blueprint Section 21): whenever a selection in one
+ * step is the "trigger" for a rule, the target step's tiles/dropdown
+ * options are narrowed down to only the options that rule allows.
+ * Rules come from the wizard's data-compatibility-rules attribute.
+ *
+ * As of this update, this also keeps a live "selected image" preview
+ * updated in the left/top panel of the Split Builder layout
+ * (Blueprint Section 31): whenever the customer picks a tile that has
+ * a data-image-url, that photo replaces the current preview image.
+ * If nothing with a photo is currently selected (e.g. only text
+ * tiles or dropdowns have been picked so far), the panel shows its
+ * default placeholder text instead. This never affects saving or
+ * validation - it is purely a visual preview.
  */
 
 document.addEventListener( 'DOMContentLoaded', function () {
@@ -44,6 +48,11 @@ var nameInput    = wizard.querySelector( '#bbb-lead-name' );
 var emailInput   = wizard.querySelector( '#bbb-lead-email' );
 var phoneInput   = wizard.querySelector( '#bbb-lead-phone' );
 var messageInput = wizard.querySelector( '#bbb-lead-message' );
+
+// The live preview panel from the Split Builder layout. May not
+// exist if an older cached version of the page markup is showing,
+// so every use of this below checks for it first.
+var selectedImagePanel = wizard.querySelector( '.bbb-selected-image' );
 
 // These come from PHP via data-* attributes on the wizard container,
 // so JavaScript can safely talk to WordPress in the background.
@@ -279,6 +288,50 @@ nextButton.disabled = true;
 }
 
 /**
+ * Updates the Split Builder image panel to show the most recently
+ * selected option's photo, if it has one. Scans selections in step
+ * order (not selection order) so the panel always reflects the
+ * customer's build "from the top down" - e.g. Frame Colour's photo
+ * stays showing even after picking a Frame Size that has no photo
+ * of its own. Falls back to the empty placeholder if nothing
+ * selected so far has a photo attached.
+ */
+function refreshSelectedImagePanel() {
+
+if ( ! selectedImagePanel ) {
+return;
+}
+
+var latestImageUrl = '';
+
+for ( var i = 0; i < totalOptionSteps; i++ ) {
+
+if ( shouldSkipStep( i ) ) {
+continue;
+}
+
+var selection = selections[ i ];
+
+if ( selection && selection.imageUrl ) {
+latestImageUrl = selection.imageUrl;
+}
+}
+
+if ( latestImageUrl ) {
+
+selectedImagePanel.style.backgroundImage = 'url(\'' + latestImageUrl + '\')';
+selectedImagePanel.classList.remove( 'bbb-image-panel--empty' );
+selectedImagePanel.innerHTML = '';
+
+} else {
+
+selectedImagePanel.style.backgroundImage = '';
+selectedImagePanel.classList.add( 'bbb-image-panel--empty' );
+selectedImagePanel.innerHTML = '<span class="bbb-image-panel-placeholder">Select options to preview your build</span>';
+}
+}
+
+/**
  * Checks whether the Name, Email, and Phone fields are all
  * filled in, and that the email looks like a valid address.
  * The Remarks field is always optional and never affects this.
@@ -419,7 +472,8 @@ tile.classList.add( 'bbb-tile-selected' );
 
 selections[ index ] = {
 optionId: tile.dataset.optionId,
-label: tile.dataset.value
+label: tile.dataset.value,
+imageUrl: tile.dataset.imageUrl || ''
 };
 
 // This is the Build Type step - check whether we now need
@@ -432,6 +486,10 @@ clearSkippedSelectionsIfNeeded();
 // has changed - it may restrict (or stop restricting) other
 // steps, and may invalidate a selection already made there.
 refreshCompatibilityRestrictions();
+
+// Keep the Split Builder preview image in sync with whatever
+// is now selected.
+refreshSelectedImagePanel();
 
 // Only enable Next if this tile's step is the one
 // currently visible on screen.
@@ -461,7 +519,8 @@ var selectedOption = dropdown.options[ dropdown.selectedIndex ];
 
 selections[ index ] = {
 optionId: dropdown.value,
-label: selectedOption.dataset.label
+label: selectedOption.dataset.label,
+imageUrl: ''
 };
 
 } else {
@@ -471,6 +530,11 @@ delete selections[ index ];
 // Re-apply any compatibility rules now that this selection
 // has changed.
 refreshCompatibilityRestrictions();
+
+// Dropdown steps never carry a photo, but a previous tile
+// selection might still need to remain visible, so refresh
+// the panel anyway for consistency.
+refreshSelectedImagePanel();
 
 if ( index === currentIndex ) {
 nextButton.disabled = ! selections[ index ];
@@ -637,9 +701,11 @@ currentIndex = prevIndex;
 showStep( currentIndex );
 } );
 
-// Apply any compatibility rules once up front (a no-op if nothing
-// has been selected yet, but keeps behaviour consistent), then
-// show the very first step when the page loads.
+// Apply any compatibility rules and the image panel once up front
+// (both are no-ops if nothing has been selected yet, but keeps
+// behaviour consistent), then show the very first step when the
+// page loads.
 refreshCompatibilityRestrictions();
+refreshSelectedImagePanel();
 showStep( currentIndex );
 } );
