@@ -1,6 +1,6 @@
 /**
  * Bespoke Bike Builder - Frame Colour Hero Image + Other Options
- * Gallery + Click-to-Enlarge Lightbox
+ * Tile Grid + Click-to-Enlarge Lightbox
  *
  * This is a fully additive, self-contained companion to builder.js.
  * It never edits builder.js or the markup rendered by
@@ -8,8 +8,7 @@
  * exists and reacts to it. A bug here cannot break navigation, the
  * Review step, or the real AJAX submission.
  *
- * Behaviour (per client request, replacing the earlier "current step
- * alternatives" version of this file):
+ * Behaviour (per client request):
  *
  * 1. Main preview image is LOCKED to whatever the customer has
  *    picked in the "Frame Colour" step - this is "the bike" the
@@ -21,14 +20,15 @@
  *    the change wasn't the Frame Colour photo, immediately restores
  *    the Frame Colour photo instead.
  *
- * 2. A gallery strip directly under the main image shows a small
- *    thumbnail for every OTHER option group the customer has already
- *    answered that has a photo (e.g. once they've picked a Cockpit
- *    and a Groupset, both thumbnails appear there, growing as they
- *    progress). Frame Colour itself is excluded from this strip,
- *    since it's already the main image.
+ * 2. Directly under that hero image, every OTHER option group the
+ *    customer has already answered (that has a photo) is shown as
+ *    its own labeled tile in a responsive grid - matching the same
+ *    image-card look used by the tile-picker steps themselves
+ *    (photo on top, label underneath), rather than a thin row of
+ *    bare thumbnails. Frame Colour itself is excluded from this
+ *    grid, since it's already the main image.
  *
- * 3. Clicking any thumbnail here, or any of the small chips in the
+ * 3. Clicking any tile here, or any of the small chips in the
  *    existing "selected summary" list (Option C), opens a
  *    full-viewport dark lightbox with that photo shown large.
  *    Closes on the "x" button, clicking the backdrop, or Escape.
@@ -37,10 +37,10 @@
  * internals, this file watches the whole wizard with a
  * MutationObserver (class changes -> tile selected/unselected, style
  * changes -> builder.js updating the main image) and recomputes
- * both the hero image and the gallery strip whenever anything
- * relevant changes. A short observer disconnect/reconnect guard is
- * used while this script itself writes to the main image, so it
- * never triggers its own mutation callback in a loop.
+ * both the hero image and the tile grid whenever anything relevant
+ * changes. A short guard is used while this script itself writes to
+ * the main image, so it never triggers its own mutation callback in
+ * a loop.
  */
 
 document.addEventListener( 'DOMContentLoaded', function () {
@@ -73,9 +73,13 @@ var optionSteps = wizard.querySelectorAll( '.bbb-step[data-group-label]' );
 var style = document.createElement( 'style' );
 style.id = 'bbb-thumbnail-gallery-styles';
 style.textContent =
-'.bbb-thumb-strip{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;}' +
-'.bbb-thumb-strip-item{width:52px;height:52px;border-radius:6px;background-size:cover;background-position:center;background-color:#0d0d0d;border:2px solid #333333;cursor:pointer;transition:border-color 0.15s ease;padding:0;}' +
-'.bbb-thumb-strip-item:hover{border-color:#3f6bab;}' +
+'.bbb-other-options-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:10px;margin-top:16px;}' +
+'.bbb-other-option-tile{background:#1e1e1e;border:2px solid #333333;border-radius:8px;overflow:hidden;cursor:pointer;padding:0;text-align:left;transition:border-color 0.15s ease;}' +
+'.bbb-other-option-tile:hover{border-color:#3f6bab;}' +
+'.bbb-other-option-tile-image{width:100%;height:72px;background-size:cover;background-position:center;background-color:#0d0d0d;}' +
+'.bbb-other-option-tile-body{padding:8px 10px;}' +
+'.bbb-other-option-tile-group{display:block;color:#9aa5b1;font-size:10px;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px;}' +
+'.bbb-other-option-tile-label{display:block;color:#ffffff;font-size:12px;font-weight:bold;line-height:1.3;}' +
 '.bbb-summary-row-chip{cursor:pointer;}' +
 '.bbb-lightbox-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.85);z-index:20000;display:flex;align-items:center;justify-content:center;padding:32px;box-sizing:border-box;}' +
 '.bbb-lightbox-image{max-width:100%;max-height:100%;border-radius:8px;box-shadow:0 10px 40px rgba(0,0,0,0.6);}' +
@@ -85,19 +89,19 @@ style.textContent =
 document.head.appendChild( style );
 
 /* -----------------------------------------------------------
-   2. Thumbnail strip element, inserted right after the main
-      image (and before the selected-summary list, if it
-      exists, so the visual order stays: image, gallery, list).
+   2. Grid element, inserted right after the main image (and
+      before the selected-summary list, if it exists, so the
+      visual order stays: image, tile grid, summary list).
    ----------------------------------------------------------- */
 
-var thumbStrip = document.createElement( 'div' );
-thumbStrip.className = 'bbb-thumb-strip';
-thumbStrip.style.display = 'none';
+var optionsGrid = document.createElement( 'div' );
+optionsGrid.className = 'bbb-other-options-grid';
+optionsGrid.style.display = 'none';
 
 if ( summaryList ) {
-imagePanel.insertBefore( thumbStrip, summaryList );
+imagePanel.insertBefore( optionsGrid, summaryList );
 } else {
-imagePanel.appendChild( thumbStrip );
+imagePanel.appendChild( optionsGrid );
 }
 
 /* -----------------------------------------------------------
@@ -213,20 +217,24 @@ if ( ! url ) {
 return null;
 }
 
+var smallImageDiv = selectedTile.querySelector( '.bbb-tile-image' );
+
 return {
 url: url,
-label: selectedTile.getAttribute( 'data-value' ) || step.getAttribute( 'data-group-label' ) || ''
+thumbUrl: smallImageDiv ? smallImageDiv.style.backgroundImage : ( 'url("' + url + '")' ),
+label: selectedTile.getAttribute( 'data-value' ) || '',
+groupLabel: step.getAttribute( 'data-group-label' ) || ''
 };
 }
 
 /* -----------------------------------------------------------
    5. Core refresh: locks the main image to Frame Colour, and
-      rebuilds the "other options" gallery strip.
+      rebuilds the "other options" tile grid.
    ----------------------------------------------------------- */
 
 var applyingHeroImage = false;
 
-function refreshHeroAndGallery() {
+function refreshHeroAndGrid() {
 
 var colourPhoto = null;
 var otherPhotos = [];
@@ -273,32 +281,53 @@ applyingHeroImage = false;
 }
 }
 
-// --- Rebuild the "other options" thumbnail strip. ---
+// --- Rebuild the "other options" tile grid. ---
 
-thumbStrip.innerHTML = '';
+optionsGrid.innerHTML = '';
 
 if ( ! otherPhotos.length ) {
-thumbStrip.style.display = 'none';
+optionsGrid.style.display = 'none';
 return;
 }
 
 otherPhotos.forEach( function ( photo ) {
 
-var thumbButton = document.createElement( 'button' );
-thumbButton.type = 'button';
-thumbButton.className = 'bbb-thumb-strip-item';
-thumbButton.style.backgroundImage = 'url("' + photo.url + '")';
-thumbButton.setAttribute( 'aria-label', photo.label || 'View larger image' );
+var tile = document.createElement( 'button' );
+tile.type = 'button';
+tile.className = 'bbb-other-option-tile';
+tile.setAttribute( 'aria-label', ( photo.groupLabel ? photo.groupLabel + ': ' : '' ) + ( photo.label || 'View larger image' ) );
 
-thumbButton.addEventListener( 'click', function ( event ) {
+var tileImage = document.createElement( 'div' );
+tileImage.className = 'bbb-other-option-tile-image';
+tileImage.style.backgroundImage = photo.thumbUrl;
+tile.appendChild( tileImage );
+
+var tileBody = document.createElement( 'div' );
+tileBody.className = 'bbb-other-option-tile-body';
+
+if ( photo.groupLabel ) {
+var groupSpan = document.createElement( 'span' );
+groupSpan.className = 'bbb-other-option-tile-group';
+groupSpan.textContent = photo.groupLabel;
+tileBody.appendChild( groupSpan );
+}
+
+var labelSpan = document.createElement( 'span' );
+labelSpan.className = 'bbb-other-option-tile-label';
+labelSpan.textContent = photo.label;
+tileBody.appendChild( labelSpan );
+
+tile.appendChild( tileBody );
+
+tile.addEventListener( 'click', function ( event ) {
 event.stopPropagation();
-openLightbox( photo.url, photo.label );
+openLightbox( photo.url, ( photo.groupLabel ? photo.groupLabel + ': ' : '' ) + photo.label );
 } );
 
-thumbStrip.appendChild( thumbButton );
+optionsGrid.appendChild( tile );
 } );
 
-thumbStrip.style.display = 'flex';
+optionsGrid.style.display = 'grid';
 }
 
 /* -----------------------------------------------------------
@@ -327,7 +356,7 @@ openLightbox( match[ 1 ] );
 /* -----------------------------------------------------------
    7. Watch the wizard for tile selection changes (class) and
       builder.js's own main-image updates (style), and
-      recompute the hero image + gallery whenever either fires.
+      recompute the hero image + grid whenever either fires.
    ----------------------------------------------------------- */
 
 var observer = new MutationObserver( function () {
@@ -336,7 +365,7 @@ if ( applyingHeroImage ) {
 return;
 }
 
-refreshHeroAndGallery();
+refreshHeroAndGrid();
 } );
 
 observer.observe( wizard, {
@@ -347,5 +376,5 @@ subtree: true
 
 // Render once immediately, in case a draft resume already has a
 // Frame Colour (and other) selections in place on page load.
-refreshHeroAndGallery();
+refreshHeroAndGrid();
 } );
