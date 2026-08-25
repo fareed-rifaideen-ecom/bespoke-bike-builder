@@ -62,12 +62,14 @@
  * markup) that locks the main preview image to the customer's Frame
  * Colour selection, shows a temporary hover preview of any other
  * photo-bearing option when the mouse is over it (an option tile in
- * the current step, or a row in the selected-summary list), and adds
- * a small disclaimer caption under the main image about Groupset and
- * Wheelset photos being for visual reference only. See that file for
- * details. Its enqueued version number is bumped on every change to
- * that file so browsers and any page-caching layer fetch the latest
- * copy instead of serving a stale cached one.
+ * the current step, or a row in the selected-summary list), adds a
+ * small disclaimer caption under the main image about Groupset and
+ * Wheelset photos being for visual reference only, and opens a
+ * full-screen magnified zoom overlay (panning with the cursor) when
+ * hovering the main image itself. See that file for details. Its
+ * enqueued version number is bumped on every change to that file so
+ * browsers and any page-caching layer fetch the latest copy instead
+ * of serving a stale cached one.
  */
 
 // If this file is opened directly in a browser (not through WordPress), stop everything.
@@ -382,16 +384,17 @@ true
 );
 
 // Additive-only script for the Frame Colour hero lock + hover
-// preview (Blueprint follow-up). It injects its own CSS and never
-// touches builder.js or the markup above, so it is safe to load
-// independently. IMPORTANT: bump this version string every time
-// builder-thumbnail-gallery.js changes, so browsers and any page
-// cache fetch the new file instead of reusing a stale cached copy.
+// preview + hover-to-zoom (Blueprint follow-up). It injects its
+// own CSS and never touches builder.js or the markup above, so it
+// is safe to load independently. IMPORTANT: bump this version
+// string every time builder-thumbnail-gallery.js changes, so
+// browsers and any page cache fetch the new file instead of
+// reusing a stale cached copy.
 wp_enqueue_script(
 'bbb-thumbnail-gallery',
 BBB_PLUGIN_URL . 'assets/js/builder-thumbnail-gallery.js',
 array(),
-'4.0.0',
+'5.0.0',
 true
 );
 
