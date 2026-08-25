@@ -40,6 +40,13 @@
  *    actual selection; clicking a tile still works exactly as
  *    builder.js already handles it.
  *
+ * 3. DISCLAIMER caption: a small line of text is inserted directly
+ *    under the main image ("Images are for visual reference only.
+ *    Groupset and Wheelset on the picture might differ from bike
+ *    specification."), managing customer expectations around the
+ *    hover-preview and default-hero images above. This is inserted
+ *    once on page load and never removed or altered afterwards.
+ *
  * How it detects changes: rather than hook into builder.js's
  * internals, this file watches the whole wizard with a
  * MutationObserver (class changes -> tile selected/unselected, style
@@ -59,9 +66,10 @@ if ( ! wizard ) {
 return;
 }
 
-var mainImage = wizard.querySelector( '.bbb-selected-image' );
+var imagePanel = wizard.querySelector( '.bbb-builder-image-panel' );
+var mainImage  = wizard.querySelector( '.bbb-selected-image' );
 
-if ( ! mainImage ) {
+if ( ! imagePanel || ! mainImage ) {
 return;
 }
 
@@ -75,7 +83,34 @@ var summaryList = wizard.querySelector( '.bbb-selected-summary' );
 var optionSteps = wizard.querySelectorAll( '.bbb-step[data-group-label]' );
 
 /* -----------------------------------------------------------
-   1. Helpers.
+   1. Inject this feature's own CSS, once (only the disclaimer
+      caption needs styling; hover behaviour needs none).
+   ----------------------------------------------------------- */
+
+var style = document.createElement( 'style' );
+style.id = 'bbb-thumbnail-gallery-styles';
+style.textContent =
+'.bbb-image-disclaimer{margin-top:10px;font-size:11px;line-height:1.4;color:#6b7280;text-align:center;}';
+document.head.appendChild( style );
+
+/* -----------------------------------------------------------
+   1b. Disclaimer caption, inserted once directly under the
+       main image (before the selected-summary list, if it
+       exists, so reading order stays: image, disclaimer, list).
+   ----------------------------------------------------------- */
+
+var disclaimer = document.createElement( 'p' );
+disclaimer.className = 'bbb-image-disclaimer';
+disclaimer.textContent = 'Images are for visual reference only. Groupset and Wheelset on the picture might differ from bike specification.';
+
+if ( summaryList ) {
+imagePanel.insertBefore( disclaimer, summaryList );
+} else {
+imagePanel.appendChild( disclaimer );
+}
+
+/* -----------------------------------------------------------
+   2. Helpers.
    ----------------------------------------------------------- */
 
 function isColourGroup( label ) {
@@ -141,7 +176,7 @@ return colourUrl;
 }
 
 /* -----------------------------------------------------------
-   2. Writing to the main image (shared by both the default
+   3. Writing to the main image (shared by both the default
       state and hover previews), with a guard so our own writes
       never re-trigger the MutationObserver below in a loop.
    ----------------------------------------------------------- */
@@ -179,7 +214,7 @@ applyingImage = false;
 }
 
 /* -----------------------------------------------------------
-   3. Restoring the Frame Colour default (or placeholder),
+   4. Restoring the Frame Colour default (or placeholder),
       skipped entirely while the customer is hovering something.
    ----------------------------------------------------------- */
 
@@ -195,7 +230,7 @@ setMainImage( getSelectedColourPhotoUrl() );
 }
 
 /* -----------------------------------------------------------
-   4a. Hover preview on the option tiles themselves (Cockpit,
+   5a. Hover preview on the option tiles themselves (Cockpit,
        Groupset, Wheelset, etc., wherever the customer is
        currently choosing).
    ----------------------------------------------------------- */
@@ -224,7 +259,7 @@ restoreDefaultImage();
 } );
 
 /* -----------------------------------------------------------
-   4b. Hover preview on the "selected summary" list rows
+   5b. Hover preview on the "selected summary" list rows
        (Build Type, Frame Colour, Frame Size, Cockpit,
        Groupset, Wheelset, etc.). builder.js rebuilds this
        list's rows every time a selection changes, so listeners
@@ -279,7 +314,7 @@ restoreDefaultImage();
 }
 
 /* -----------------------------------------------------------
-   5. Watch the wizard for tile selection changes (class) and
+   6. Watch the wizard for tile selection changes (class) and
       builder.js's own main-image updates (style), and restore
       the Frame Colour default whenever either fires (unless a
       hover preview is currently active).
