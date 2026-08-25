@@ -60,12 +60,14 @@
  * enqueued. It is a fully additive, self-contained script (it
  * injects its own CSS and never edits builder.js or this file's
  * markup) that locks the main preview image to the customer's Frame
- * Colour selection and shows a temporary hover preview of any other
- * photo-bearing option when the mouse is over it - either an option
- * tile in the current step, or a row in the selected-summary list.
- * See that file for details. Its enqueued version number is bumped
- * on every change to that file so browsers and any page-caching
- * layer fetch the latest copy instead of serving a stale cached one.
+ * Colour selection, shows a temporary hover preview of any other
+ * photo-bearing option when the mouse is over it (an option tile in
+ * the current step, or a row in the selected-summary list), and adds
+ * a small disclaimer caption under the main image about Groupset and
+ * Wheelset photos being for visual reference only. See that file for
+ * details. Its enqueued version number is bumped on every change to
+ * that file so browsers and any page-caching layer fetch the latest
+ * copy instead of serving a stale cached one.
  */
 
 // If this file is opened directly in a browser (not through WordPress), stop everything.
@@ -389,7 +391,7 @@ wp_enqueue_script(
 'bbb-thumbnail-gallery',
 BBB_PLUGIN_URL . 'assets/js/builder-thumbnail-gallery.js',
 array(),
-'3.0.0',
+'4.0.0',
 true
 );
 
