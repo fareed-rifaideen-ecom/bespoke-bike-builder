@@ -1,5 +1,6 @@
 /**
  * Bespoke Bike Builder - Frame Colour Default Image + Hover Preview
+ * + Hover-to-Zoom
  *
  * This is a fully additive, self-contained companion to builder.js.
  * It never edits builder.js or the markup rendered by
@@ -47,6 +48,21 @@
  *    hover-preview and default-hero images above. This is inserted
  *    once on page load and never removed or altered afterwards.
  *
+ * 4. HOVER-TO-ZOOM: hovering the main image itself (not a tile or a
+ *    summary row, but the big photo area directly) opens a
+ *    full-viewport dark overlay showing that same photo enlarged
+ *    beyond screen size (220% of the viewport width). Moving the
+ *    mouse while the overlay is open pans around the enlarged image,
+ *    following the cursor position exactly like a standard product
+ *    "magnifier" zoom. Because the overlay covers the whole screen,
+ *    there's no "outside" to move the mouse to in order to close it
+ *    by hovering away - so it closes on any of: clicking anywhere on
+ *    it, pressing Escape, or the mouse leaving the browser window
+ *    entirely. This is a pure viewing aid; it never changes any
+ *    selection and is completely independent of the hover-preview
+ *    behaviour above (which still updates the underlying photo the
+ *    zoom will show the next time it's opened).
+ *
  * How it detects changes: rather than hook into builder.js's
  * internals, this file watches the whole wizard with a
  * MutationObserver (class changes -> tile selected/unselected, style
@@ -83,14 +99,15 @@ var summaryList = wizard.querySelector( '.bbb-selected-summary' );
 var optionSteps = wizard.querySelectorAll( '.bbb-step[data-group-label]' );
 
 /* -----------------------------------------------------------
-   1. Inject this feature's own CSS, once (only the disclaimer
-      caption needs styling; hover behaviour needs none).
+   1. Inject this feature's own CSS, once.
    ----------------------------------------------------------- */
 
 var style = document.createElement( 'style' );
 style.id = 'bbb-thumbnail-gallery-styles';
 style.textContent =
-'.bbb-image-disclaimer{margin-top:10px;font-size:11px;line-height:1.4;color:#6b7280;text-align:center;}';
+'.bbb-image-disclaimer{margin-top:10px;font-size:11px;line-height:1.4;color:#6b7280;text-align:center;}' +
+'.bbb-selected-image{cursor:zoom-in;}' +
+'.bbb-zoom-overlay{position:fixed;top:0;left:0;right:0;bottom:0;z-index:21000;background-color:#000000;background-repeat:no-repeat;background-size:220% auto;cursor:zoom-out;display:none;}';
 document.head.appendChild( style );
 
 /* -----------------------------------------------------------
@@ -314,7 +331,74 @@ restoreDefaultImage();
 }
 
 /* -----------------------------------------------------------
-   6. Watch the wizard for tile selection changes (class) and
+   6. Hover-to-zoom on the main image itself. A single reusable
+      full-viewport overlay is created once; hovering the main
+      image fills it with the same photo, enlarged, and pans it
+      to follow the cursor. See the file docblock for why it
+      closes on click/Escape/leaving the window rather than on
+      "hovering away" (there's no "away" once it fills the
+      screen).
+   ----------------------------------------------------------- */
+
+var zoomOverlay = document.createElement( 'div' );
+zoomOverlay.className = 'bbb-zoom-overlay';
+document.body.appendChild( zoomOverlay );
+
+function openZoom() {
+
+var currentBg = mainImage.style.backgroundImage;
+
+if ( ! currentBg || mainImage.classList.contains( 'bbb-image-panel--empty' ) ) {
+return;
+}
+
+zoomOverlay.style.backgroundImage = currentBg;
+zoomOverlay.style.display = 'block';
+}
+
+function closeZoom() {
+
+zoomOverlay.style.display = 'none';
+}
+
+function panZoom( clientX, clientY ) {
+
+var percentX = ( clientX / window.innerWidth ) * 100;
+var percentY = ( clientY / window.innerHeight ) * 100;
+
+zoomOverlay.style.backgroundPosition = percentX + '% ' + percentY + '%';
+}
+
+mainImage.addEventListener( 'mouseenter', function () {
+openZoom();
+} );
+
+mainImage.addEventListener( 'mousemove', function ( event ) {
+
+if ( 'block' === zoomOverlay.style.display ) {
+panZoom( event.clientX, event.clientY );
+}
+} );
+
+zoomOverlay.addEventListener( 'mousemove', function ( event ) {
+panZoom( event.clientX, event.clientY );
+} );
+
+zoomOverlay.addEventListener( 'click', closeZoom );
+
+document.addEventListener( 'keydown', function ( event ) {
+
+if ( 'Escape' === event.key ) {
+closeZoom();
+}
+} );
+
+document.addEventListener( 'mouseleave', function () {
+closeZoom();
+} );
+
+/* -----------------------------------------------------------
+   7. Watch the wizard for tile selection changes (class) and
       builder.js's own main-image updates (style), and restore
       the Frame Colour default whenever either fires (unless a
       hover preview is currently active).
