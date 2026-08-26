@@ -70,6 +70,19 @@
  * enqueued version number is bumped on every change to that file so
  * browsers and any page-caching layer fetch the latest copy instead
  * of serving a stale cached one.
+ *
+ * As of this update, whenever BBB_Pricing_Settings::is_enabled()
+ * returns true (Settings > BBB Pricing, off by default), the wizard
+ * container also carries a data-pricing-enabled="1" attribute, and
+ * every option (tile or dropdown <option>) carries a data-price
+ * attribute holding its already-existing price_delta value from the
+ * database. Neither attribute is ever output while pricing is
+ * disabled, so no price data reaches the customer's browser at all
+ * unless an Administrator has deliberately turned this on. The
+ * display logic that reads these attributes (running total + Review
+ * breakdown) lives entirely in assets/js/builder-pricing.js, which is
+ * itself only enqueued while pricing is enabled (see
+ * bespoke-bike-builder.php).
  */
 
 // If this file is opened directly in a browser (not through WordPress), stop everything.
@@ -481,6 +494,12 @@ $atts
 
 self::enqueue_assets();
 
+// Whether estimated pricing should be output to the page at all
+// (Settings > BBB Pricing, off by default). Guarded with
+// class_exists() so this file never fatals even if, for some
+// reason, class-bbb-pricing-settings.php failed to load.
+$pricing_enabled = class_exists( 'BBB_Pricing_Settings' ) && BBB_Pricing_Settings::is_enabled();
+
 global $wpdb;
 
 $templates_table = $wpdb->prefix . 'bbb_templates';
@@ -526,7 +545,7 @@ $compatibility_rules = self::get_compatibility_rules_map( $group_ids );
 ob_start();
 ?>
 
-<div class="bbb-builder-placeholder" data-total-option-steps="<?php echo esc_attr( $total_option_steps ); ?>" data-template-id="<?php echo esc_attr( $template['id'] ); ?>" data-ajax-url="<?php echo esc_attr( $ajax_url ); ?>" data-nonce="<?php echo esc_attr( $nonce ); ?>" data-compatibility-rules="<?php echo esc_attr( wp_json_encode( $compatibility_rules ) ); ?>">
+<div class="bbb-builder-placeholder" data-total-option-steps="<?php echo esc_attr( $total_option_steps ); ?>" data-template-id="<?php echo esc_attr( $template['id'] ); ?>" data-ajax-url="<?php echo esc_attr( $ajax_url ); ?>" data-nonce="<?php echo esc_attr( $nonce ); ?>" data-compatibility-rules="<?php echo esc_attr( wp_json_encode( $compatibility_rules ) ); ?>"<?php echo $pricing_enabled ? ' data-pricing-enabled="1"' : ''; ?>>
 
 <div class="bbb-builder-columns">
 
@@ -566,7 +585,7 @@ $is_first_step = ( 0 === $index );
 <select class="bbb-dropdown">
 <option value="">Select an option</option>
 <?php foreach ( $options as $option ) : ?>
-<option value="<?php echo esc_attr( $option['id'] ); ?>" data-label="<?php echo esc_attr( $option['label'] ); ?>">
+<option value="<?php echo esc_attr( $option['id'] ); ?>" data-label="<?php echo esc_attr( $option['label'] ); ?>"<?php echo $pricing_enabled ? ' data-price="' . esc_attr( $option['price_delta'] ) . '"' : ''; ?>>
 <?php echo esc_html( $option['label'] ); ?>
 </option>
 <?php endforeach; ?>
@@ -587,7 +606,7 @@ $preview_url = ! empty( $option['image_id'] )
 : '';
 ?>
 
-<div class="bbb-tile<?php echo $thumb_url ? ' bbb-tile-with-image' : ''; ?>" data-option-id="<?php echo esc_attr( $option['id'] ); ?>" data-value="<?php echo esc_attr( $option['label'] ); ?>" data-image-url="<?php echo esc_url( $preview_url ); ?>">
+<div class="bbb-tile<?php echo $thumb_url ? ' bbb-tile-with-image' : ''; ?>" data-option-id="<?php echo esc_attr( $option['id'] ); ?>" data-value="<?php echo esc_attr( $option['label'] ); ?>" data-image-url="<?php echo esc_url( $preview_url ); ?>"<?php echo $pricing_enabled ? ' data-price="' . esc_attr( $option['price_delta'] ) . '"' : ''; ?>>
 
 <?php if ( $thumb_url ) : ?>
 <div class="bbb-tile-image" style="background-image:url('<?php echo esc_url( $thumb_url ); ?>');"></div>
