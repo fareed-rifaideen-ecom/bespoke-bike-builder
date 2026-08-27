@@ -18,11 +18,17 @@
  *    the sum of every currently selected option's price_delta. This
  *    updates live as the customer picks tiles or changes dropdowns.
  *
- * 2. A price breakdown appended just below the existing Review step
- *    content (builder.js's own review rows are never touched or
- *    replaced) - one line per selected option that carries a
- *    nonzero price, "Included" for anything selected with a price of
- *    zero, and a bold grand total at the bottom.
+ * 2. On the Review step, the price (or "Included") is appended
+ *    directly onto each row that builder.js already renders inside
+ *    .bbb-review-content - there is no separate, duplicate list.
+ *    A single bold "Estimated Total" row is added at the very end of
+ *    that same card. Because builder.js fully rebuilds
+ *    .bbb-review-content's innerHTML every time the Review step is
+ *    shown (see its populateReview function), this script re-applies
+ *    the price annotations every time that happens, using a
+ *    MutationObserver scoped to childList changes on that element -
+ *    builder.js's own row markup, classes and text are never altered,
+ *    only appended to.
  *
  * All totals shown here are estimates for the customer's convenience
  * only. The authoritative total used internally is always
@@ -30,12 +36,12 @@
  * is actually submitted (see class-bbb-ajax.php) - this script's
  * numbers are never sent to or trusted by the server.
  *
- * How it detects changes: since dropdown selections don't toggle any
- * CSS class, this uses both a MutationObserver (for tile clicks,
- * which do toggle bbb-tile-selected) and a 'change' listener on every
- * dropdown, then recomputes the total from scratch each time by
- * reading the DOM - it never needs access to builder.js's internal
- * selection state.
+ * How it detects selection changes: since dropdown selections don't
+ * toggle any CSS class, this uses both a MutationObserver (for tile
+ * clicks, which do toggle bbb-tile-selected) and a 'change' listener
+ * on every dropdown, then recomputes the total from scratch each
+ * time by reading the DOM - it never needs access to builder.js's
+ * internal selection state.
  */
 
 document.addEventListener( 'DOMContentLoaded', function () {
@@ -50,7 +56,6 @@ return;
 
 var imagePanel  = wizard.querySelector( '.bbb-builder-image-panel' );
 var summaryList = wizard.querySelector( '.bbb-selected-summary' );
-var reviewStep  = wizard.querySelector( '.bbb-review-step' );
 var reviewContent = wizard.querySelector( '.bbb-review-content' );
 
 // Every option step, in order, as rendered by class-bbb-shortcodes.php.
@@ -66,14 +71,11 @@ style.textContent =
 '.bbb-price-summary{background:#1b2634;border:1px solid #3f6bab;border-radius:8px;padding:12px 16px;margin-top:14px;display:flex;justify-content:space-between;align-items:center;}' +
 '.bbb-price-summary-label{color:#9aa5b1;font-size:13px;text-transform:uppercase;letter-spacing:0.05em;}' +
 '.bbb-price-summary-value{color:#ffffff;font-size:18px;font-weight:bold;}' +
-'.bbb-price-breakdown{background:#1b1b1b;border:1px solid #2c2c2c;border-radius:8px;padding:6px 20px;margin-top:16px;}' +
-'.bbb-price-breakdown-row{display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid #2c2c2c;font-size:14px;}' +
-'.bbb-price-breakdown-row:last-child{border-bottom:none;}' +
-'.bbb-price-breakdown-label{color:#9aa5b1;}' +
-'.bbb-price-breakdown-value{color:#ffffff;font-weight:bold;}' +
-'.bbb-price-breakdown-total{display:flex;justify-content:space-between;padding:14px 0 4px;font-size:16px;}' +
-'.bbb-price-breakdown-total .bbb-price-breakdown-label{color:#ffffff;font-weight:bold;}' +
-'.bbb-price-breakdown-total .bbb-price-breakdown-value{color:#7fe0a0;font-size:18px;}';
+'.bbb-review-row-price{color:#7fe0a0;font-weight:bold;margin-left:10px;white-space:nowrap;}' +
+'.bbb-review-row-price.bbb-review-row-price--included{color:#9aa5b1;font-weight:normal;font-style:italic;}' +
+'.bbb-review-total-row{display:flex;justify-content:space-between;padding:14px 0 4px;margin-top:4px;border-top:1px solid #2c2c2c;font-size:16px;}' +
+'.bbb-review-total-row .bbb-review-total-label{color:#ffffff;font-weight:bold;}' +
+'.bbb-review-total-row .bbb-review-total-value{color:#7fe0a0;font-size:18px;font-weight:bold;}';
 document.head.appendChild( style );
 
 /* -----------------------------------------------------------
@@ -141,6 +143,17 @@ price: isNaN( tilePrice ) ? 0 : tilePrice
 return selections;
 }
 
+function getCurrentTotal() {
+
+var total = 0;
+
+getCurrentSelections().forEach( function ( selection ) {
+total += selection.price;
+} );
+
+return total;
+}
+
 /* -----------------------------------------------------------
    4. The running "Estimated Price" row in the left column,
       inserted once, directly above the existing selected
@@ -171,88 +184,146 @@ imagePanel.appendChild( priceSummary );
 }
 }
 
-/* -----------------------------------------------------------
-   5. The price breakdown appended below the existing Review
-      step content, created once and updated in place.
-   ----------------------------------------------------------- */
+function refreshPriceSummary() {
 
-var priceBreakdown = null;
-
-if ( reviewStep ) {
-
-priceBreakdown = document.createElement( 'div' );
-priceBreakdown.className = 'bbb-price-breakdown';
-reviewStep.appendChild( priceBreakdown );
+if ( priceSummaryValue ) {
+priceSummaryValue.textContent = formatPrice( getCurrentTotal() );
+}
 }
 
 /* -----------------------------------------------------------
-   6. Recomputing everything whenever a selection changes.
+   5. Annotating the Review step's OWN rows with a price, and
+      appending a single total row at the end of that same
+      card - instead of building a separate, duplicate list.
+
+      builder.js fully replaces .bbb-review-content's innerHTML
+      every time the Review step is shown (see its populateReview
+      function), so this re-applies on every such rebuild via a
+      childList MutationObserver scoped to that one element. The
+      observer is disconnected while this function itself edits
+      the DOM, so its own additions never re-trigger it.
    ----------------------------------------------------------- */
 
-function refreshPricing() {
+var reviewObserver = null;
+
+function annotateReviewRows() {
+
+if ( ! reviewContent ) {
+return;
+}
+
+// Nothing to annotate if builder.js hasn't rendered any rows yet
+// (e.g. the Review step has never been visited).
+var rows = reviewContent.querySelectorAll( '.bbb-review-row' );
+
+if ( ! rows.length ) {
+return;
+}
+
+if ( reviewObserver ) {
+reviewObserver.disconnect();
+}
 
 var selections = getCurrentSelections();
 var total = 0;
 
-selections.forEach( function ( selection ) {
-total += selection.price;
-} );
+rows.forEach( function ( row ) {
 
-if ( priceSummaryValue ) {
-priceSummaryValue.textContent = formatPrice( total );
+// Guard against double-annotating a row this script already
+// touched (defensive only - rows are normally rebuilt fresh by
+// builder.js before this runs).
+var existingPriceEl = row.querySelector( '.bbb-review-row-price' );
+if ( existingPriceEl ) {
+existingPriceEl.parentNode.removeChild( existingPriceEl );
 }
 
-if ( priceBreakdown ) {
+var labelEl = row.querySelector( '.bbb-review-label' );
+var valueEl = row.querySelector( '.bbb-review-value' );
 
-priceBreakdown.innerHTML = '';
+if ( ! labelEl || ! valueEl ) {
+return;
+}
 
-selections.forEach( function ( selection ) {
+var rowLabel = labelEl.textContent.trim();
 
-var row = document.createElement( 'div' );
-row.className = 'bbb-price-breakdown-row';
+var matchingSelection = null;
+for ( var i = 0; i < selections.length; i++ ) {
+if ( selections[ i ].groupLabel === rowLabel ) {
+matchingSelection = selections[ i ];
+break;
+}
+}
 
-var label = document.createElement( 'span' );
-label.className = 'bbb-price-breakdown-label';
-label.textContent = selection.groupLabel + ': ' + selection.optionLabel;
-row.appendChild( label );
+if ( ! matchingSelection ) {
+return;
+}
 
-var value = document.createElement( 'span' );
-value.className = 'bbb-price-breakdown-value';
-value.textContent = selection.price ? formatPrice( selection.price ) : 'Included';
-row.appendChild( value );
+total += matchingSelection.price;
 
-priceBreakdown.appendChild( row );
+var priceEl = document.createElement( 'span' );
+priceEl.className = 'bbb-review-row-price';
+
+if ( matchingSelection.price ) {
+priceEl.textContent = formatPrice( matchingSelection.price );
+} else {
+priceEl.className += ' bbb-review-row-price--included';
+priceEl.textContent = 'Included';
+}
+
+valueEl.appendChild( priceEl );
 } );
 
+var existingTotalRow = reviewContent.querySelector( '.bbb-review-total-row' );
+if ( existingTotalRow ) {
+existingTotalRow.parentNode.removeChild( existingTotalRow );
+}
+
 var totalRow = document.createElement( 'div' );
-totalRow.className = 'bbb-price-breakdown-total';
+totalRow.className = 'bbb-review-total-row';
 
 var totalLabel = document.createElement( 'span' );
-totalLabel.className = 'bbb-price-breakdown-label';
+totalLabel.className = 'bbb-review-total-label';
 totalLabel.textContent = 'Estimated Total';
 totalRow.appendChild( totalLabel );
 
 var totalValue = document.createElement( 'span' );
-totalValue.className = 'bbb-price-breakdown-value';
+totalValue.className = 'bbb-review-total-value';
 totalValue.textContent = formatPrice( total );
 totalRow.appendChild( totalValue );
 
-priceBreakdown.appendChild( totalRow );
+reviewContent.appendChild( totalRow );
+
+if ( reviewObserver ) {
+reviewObserver.observe( reviewContent, { childList: true } );
 }
+}
+
+if ( reviewContent ) {
+reviewObserver = new MutationObserver( function () {
+annotateReviewRows();
+} );
+reviewObserver.observe( reviewContent, { childList: true } );
 }
 
 /* -----------------------------------------------------------
-   7. Wiring up change detection: a MutationObserver for tile
-      clicks (which toggle bbb-tile-selected), plus a direct
-      'change' listener on every dropdown (which don't toggle
-      any class at all).
+   6. Wiring up selection-change detection: a MutationObserver
+      for tile clicks (which toggle bbb-tile-selected), plus a
+      direct 'change' listener on every dropdown (which don't
+      toggle any class at all). Both simply refresh the running
+      total and re-annotate the Review rows if they're currently
+      rendered - cheap no-ops otherwise.
    ----------------------------------------------------------- */
 
-var observer = new MutationObserver( function () {
+function refreshPricing() {
+refreshPriceSummary();
+annotateReviewRows();
+}
+
+var selectionObserver = new MutationObserver( function () {
 refreshPricing();
 } );
 
-observer.observe( wizard, {
+selectionObserver.observe( wizard, {
 attributes: true,
 attributeFilter: [ 'class' ],
 subtree: true
