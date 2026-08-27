@@ -1,6 +1,8 @@
 <?php
 /**
- * Adds a Settings > BBB Pricing admin page with a single control: an
+ * Bespoke Bike Builder - Pricing Settings
+ *
+ * Adds a "Pricing" admin page with a single control: an
  * Administrator-editable on/off toggle for whether estimated prices
  * (built from each option's existing price_delta field, already
  * saved from the Manage Options screen) are shown to customers on
@@ -16,6 +18,10 @@
  *
  * Off by default, so nothing about the customer experience changes
  * until an Administrator deliberately turns this on.
+ *
+ * As of this update, this settings page lives under the main
+ * "Bespoke Bike Builder" admin menu instead of under Settings, so
+ * every plugin screen is found in one place.
  */
 
 // If this file is opened directly in a browser (not through WordPress), stop everything.
@@ -35,24 +41,16 @@ const OPTION_NAME = 'bbb_pricing_enabled';
  * It is called once, from the main plugin file.
  */
 public static function init() {
-
 add_action( 'admin_menu', array( __CLASS__, 'add_settings_page' ) );
 add_action( 'admin_init', array( __CLASS__, 'register_setting' ) );
 }
 
 /**
- * Registers the "BBB Pricing" page under the normal WordPress
- * Settings menu, visible only to Administrators.
+ * Registers the "BBB Pricing" page as a submenu under the main
+ * "Bespoke Bike Builder" admin menu, visible only to Administrators.
  */
 public static function add_settings_page() {
-
-add_options_page(
-'BBB Pricing',
-'BBB Pricing',
-'manage_options',
-'bbb-pricing-settings',
-array( __CLASS__, 'render_settings_page' )
-);
+add_submenu_page( 'bbb-dashboard', 'BBB Pricing', 'Pricing', 'manage_options', 'bbb-pricing-settings', array( __CLASS__, 'render_settings_page' ) );
 }
 
 /**
@@ -61,7 +59,6 @@ array( __CLASS__, 'render_settings_page' )
  * way without any custom form-handling code in this class.
  */
 public static function register_setting() {
-
 register_setting(
 'bbb_pricing_settings_group',
 self::OPTION_NAME,
@@ -78,7 +75,6 @@ array(
  * unticked) into a clean true/false value.
  */
 public static function sanitize_checkbox( $value ) {
-
 return ! empty( $value );
 }
 
@@ -92,12 +88,11 @@ return ! empty( $value );
  * @return bool
  */
 public static function is_enabled() {
-
 return (bool) get_option( self::OPTION_NAME, false );
 }
 
 /**
- * Renders the actual Settings > BBB Pricing admin page.
+ * Renders the actual "BBB Pricing" admin page.
  */
 public static function render_settings_page() {
 
@@ -108,23 +103,20 @@ return;
 <div class="wrap">
 <h1>BBB Pricing</h1>
 <p>Controls whether customers see estimated prices while building on the public Dogma F builder. Prices themselves are set per option on the <a href="<?php echo esc_url( admin_url( 'admin.php?page=bbb-manage-options' ) ); ?>">Manage Options</a> screen (Price Delta field) - this page only controls whether that data is ever displayed.</p>
-
 <form method="post" action="options.php">
 <?php settings_fields( 'bbb_pricing_settings_group' ); ?>
-
 <table class="form-table" role="presentation">
 <tr>
 <th scope="row">Show estimated pricing to customers</th>
 <td>
 <label>
-<input type="checkbox" name="<?php echo esc_attr( self::OPTION_NAME ); ?>" value="1" <?php checked( self::is_enabled() ); ?>>
+<input type="checkbox" name="<?php echo esc_attr( self::OPTION_NAME ); ?>" value="1" <?php checked( self::is_enabled() ); ?> />
 Show a running estimated total in the builder and a price breakdown on the Review step.
 </label>
 <p class="description">When off (the default), no price is ever shown or sent to the customer's browser, even if options already have a Price Delta saved.</p>
 </td>
 </tr>
 </table>
-
 <?php submit_button( 'Save Changes' ); ?>
 </form>
 </div>
