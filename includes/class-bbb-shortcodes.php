@@ -66,7 +66,7 @@
  * small disclaimer caption under the main image about Groupset and
  * Wheelset photos being for visual reference only, and opens a
  * full-screen magnified zoom overlay (panning with the cursor) when
- * hovering the main image itself. See that file for details. Its
+ * the main image itself is clicked. See that file for details. Its
  * enqueued version number is bumped on every change to that file so
  * browsers and any page-caching layer fetch the latest copy instead
  * of serving a stale cached one.
@@ -397,7 +397,7 @@ true
 );
 
 // Additive-only script for the Frame Colour hero lock + hover
-// preview + hover-to-zoom (Blueprint follow-up). It injects its
+// preview + click-to-zoom (Blueprint follow-up). It injects its
 // own CSS and never touches builder.js or the markup above, so it
 // is safe to load independently. IMPORTANT: bump this version
 // string every time builder-thumbnail-gallery.js changes, so
@@ -407,7 +407,7 @@ wp_enqueue_script(
 'bbb-thumbnail-gallery',
 BBB_PLUGIN_URL . 'assets/js/builder-thumbnail-gallery.js',
 array(),
-'5.0.0',
+'5.0.1',
 true
 );
 
