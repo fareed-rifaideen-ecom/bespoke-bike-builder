@@ -1,6 +1,6 @@
 /**
  * Bespoke Bike Builder - Frame Colour Default Image + Hover Preview
- * + Hover-to-Zoom
+ * + Click-to-Zoom
  *
  * This is a fully additive, self-contained companion to builder.js.
  * It never edits builder.js or the markup rendered by
@@ -48,20 +48,19 @@
  *    hover-preview and default-hero images above. This is inserted
  *    once on page load and never removed or altered afterwards.
  *
- * 4. HOVER-TO-ZOOM: hovering the main image itself (not a tile or a
+ * 4. CLICK-TO-ZOOM: clicking the main image itself (not a tile or a
  *    summary row, but the big photo area directly) opens a
  *    full-viewport dark overlay showing that same photo enlarged
  *    beyond screen size (220% of the viewport width). Moving the
  *    mouse while the overlay is open pans around the enlarged image,
  *    following the cursor position exactly like a standard product
- *    "magnifier" zoom. Because the overlay covers the whole screen,
- *    there's no "outside" to move the mouse to in order to close it
- *    by hovering away - so it closes on any of: clicking anywhere on
- *    it, pressing Escape, or the mouse leaving the browser window
- *    entirely. This is a pure viewing aid; it never changes any
- *    selection and is completely independent of the hover-preview
- *    behaviour above (which still updates the underlying photo the
- *    zoom will show the next time it's opened).
+ *    "magnifier" zoom. It closes on any of: clicking anywhere on the
+ *    overlay, pressing Escape, or clicking the main image again
+ *    while the overlay happens to still be open. This is a pure
+ *    viewing aid; it never changes any selection and is completely
+ *    independent of the hover-preview behaviour above (which still
+ *    updates the underlying photo the zoom will show the next time
+ *    it's opened).
  *
  * How it detects changes: rather than hook into builder.js's
  * internals, this file watches the whole wizard with a
@@ -83,7 +82,7 @@ return;
 }
 
 var imagePanel = wizard.querySelector( '.bbb-builder-image-panel' );
-var mainImage  = wizard.querySelector( '.bbb-selected-image' );
+var mainImage = wizard.querySelector( '.bbb-selected-image' );
 
 if ( ! imagePanel || ! mainImage ) {
 return;
@@ -331,18 +330,21 @@ restoreDefaultImage();
 }
 
 /* -----------------------------------------------------------
-   6. Hover-to-zoom on the main image itself. A single reusable
-      full-viewport overlay is created once; hovering the main
+   6. Click-to-zoom on the main image itself. A single reusable
+      full-viewport overlay is created once; clicking the main
       image fills it with the same photo, enlarged, and pans it
-      to follow the cursor. See the file docblock for why it
-      closes on click/Escape/leaving the window rather than on
-      "hovering away" (there's no "away" once it fills the
-      screen).
+      to follow the cursor while it's open. It closes on any of:
+      clicking anywhere on the overlay, pressing Escape, or
+      clicking the main image again.
    ----------------------------------------------------------- */
 
 var zoomOverlay = document.createElement( 'div' );
 zoomOverlay.className = 'bbb-zoom-overlay';
 document.body.appendChild( zoomOverlay );
+
+function isZoomOpen() {
+return 'block' === zoomOverlay.style.display;
+}
 
 function openZoom() {
 
@@ -357,7 +359,6 @@ zoomOverlay.style.display = 'block';
 }
 
 function closeZoom() {
-
 zoomOverlay.style.display = 'none';
 }
 
@@ -369,13 +370,18 @@ var percentY = ( clientY / window.innerHeight ) * 100;
 zoomOverlay.style.backgroundPosition = percentX + '% ' + percentY + '%';
 }
 
-mainImage.addEventListener( 'mouseenter', function () {
+mainImage.addEventListener( 'click', function () {
+
+if ( isZoomOpen() ) {
+closeZoom();
+} else {
 openZoom();
+}
 } );
 
 mainImage.addEventListener( 'mousemove', function ( event ) {
 
-if ( 'block' === zoomOverlay.style.display ) {
+if ( isZoomOpen() ) {
 panZoom( event.clientX, event.clientY );
 }
 } );
@@ -391,10 +397,6 @@ document.addEventListener( 'keydown', function ( event ) {
 if ( 'Escape' === event.key ) {
 closeZoom();
 }
-} );
-
-document.addEventListener( 'mouseleave', function () {
-closeZoom();
 } );
 
 /* -----------------------------------------------------------
