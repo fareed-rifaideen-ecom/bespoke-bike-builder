@@ -52,4 +52,4 @@ Fareed M. Rifaideen — [fareed-rifaideen.netlify.app](https://fareed-rifaideen.
 
 ## License
 
-GPL v2 or later
+MIT — see [LICENSE](LICENSE) for the full text. You're free to use, copy, modify, and distribute this plugin, provided the copyright notice is retained. Provided "as is", without warranty of any kind.
