@@ -1,14 +1,14 @@
 <?php
 /**
- * Plugin Name:       Bespoke Bike Builder
- * Plugin URI:        https://github.com/fareed-rifaideen-ecom/bespoke-bike-builder
- * Description:       A custom bicycle build request platform for The Cycle Hub, starting with the Pinarello Dogma F custom build experience.
- * Version:           1.0.0
- * Author:            Fareed M. Rifaideen
- * Author URI:        https://fareed-rifaideen.netlify.app/
- * License:            GPL v2 or later
- * License URI:        https://www.gnu.org/licenses/gpl-2.0.html
- * Text Domain:        bespoke-bike-builder
+ * Plugin Name: Bespoke Bike Builder
+ * Plugin URI: https://github.com/fareed-rifaideen-ecom/bespoke-bike-builder
+ * Description: A custom bicycle build request platform for The Cycle Hub, starting with the Pinarello Dogma F custom build experience.
+ * Version: 1.0.0
+ * Author: Fareed M. Rifaideen
+ * Author URI: https://fareed-rifaideen.netlify.app
+ * License: MIT
+ * License URI: https://opensource.org/licenses/MIT
+ * Text Domain: bespoke-bike-builder
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -30,14 +30,14 @@ require_once BBB_PLUGIN_DIR . 'includes/class-bbb-draft-resume.php';
 require_once BBB_PLUGIN_DIR . 'includes/class-bbb-roles.php';
 require_once BBB_PLUGIN_DIR . 'includes/class-bbb-roles-admin-page.php';
 
-// This loads the Staff Frontend Portal: a [bbb_staff_portal] shortcode
-// that Administrators place on any normal WordPress page. Staff log
-// in there directly (via wp_signon(), the same core authentication as
-// wp-login.php) and never need to visit /wp-admin/ at all. Access is
+// This loads the Staff Frontend Portal - a [bbb_staff_portal] shortcode
+// that Administrators place on any normal WordPress page. Staff log in
+// there directly via wp_signon (the same core authentication as
+// wp-login.php) and never need to visit wp-admin at all. Access is
 // gated by the manage_bbb_submissions / manage_options capabilities.
 require_once BBB_PLUGIN_DIR . 'includes/class-bbb-staff-portal.php';
 
-// This loads the Submission Event Log: a listener that records an
+// This loads the Submission Event Log - a listener that records an
 // audit-trail row every time a build request is submitted or its
 // status changes, by listening for the bbb_submission_created and
 // bbb_submission_status_updated actions fired from BBB_Ajax and
@@ -45,11 +45,11 @@ require_once BBB_PLUGIN_DIR . 'includes/class-bbb-staff-portal.php';
 // itself unless BBB_Event_Log::init() is called below.
 require_once BBB_PLUGIN_DIR . 'includes/class-bbb-event-log.php';
 
-// This loads the Notification Recipient Settings: a Settings > BBB
-// Notifications admin page where an Administrator can set which
-// email addresses get notified of new build requests (the Sales
-// Manager and any additional staff), instead of that address being
-// hardcoded into class-bbb-ajax.php.
+// This loads the Notification Recipient Settings - a Settings > BBB
+// Notifications admin page where an Administrator can set which email
+// addresses get notified of new build requests (the Sales Manager and
+// any additional staff), instead of that address being hardcoded into
+// class-bbb-ajax.php.
 require_once BBB_PLUGIN_DIR . 'includes/class-bbb-notification-settings.php';
 
 // This loads the Pricing Settings: a Settings > BBB Pricing admin
@@ -98,7 +98,7 @@ BBB_Pricing_Settings::init();
 // error even if those files are ever removed.
 add_action( 'wp_enqueue_scripts', function () {
 $css_path = BBB_PLUGIN_DIR . 'assets/css/builder-responsive.css';
-$js_path  = BBB_PLUGIN_DIR . 'assets/js/builder-responsive.js';
+$js_path = BBB_PLUGIN_DIR . 'assets/js/builder-responsive.js';
 
 if ( file_exists( $css_path ) ) {
 wp_enqueue_style(
@@ -129,7 +129,7 @@ true
 // Notices" admin settings page rather than being hardcoded.
 add_action( 'wp_enqueue_scripts', function () {
 $css_path = BBB_PLUGIN_DIR . 'assets/css/builder-notices.css';
-$js_path  = BBB_PLUGIN_DIR . 'assets/js/builder-notices.js';
+$js_path = BBB_PLUGIN_DIR . 'assets/js/builder-notices.js';
 
 if ( file_exists( $css_path ) ) {
 wp_enqueue_style(
@@ -167,7 +167,7 @@ wp_localize_script( 'bbb-builder-notices', 'bbbNotices', array(
 // the same way any other WordPress AJAX call would be.
 add_action( 'wp_enqueue_scripts', function () {
 $css_path = BBB_PLUGIN_DIR . 'assets/css/builder-draft-resume.css';
-$js_path  = BBB_PLUGIN_DIR . 'assets/js/builder-draft-resume.js';
+$js_path = BBB_PLUGIN_DIR . 'assets/js/builder-draft-resume.js';
 
 if ( file_exists( $css_path ) ) {
 wp_enqueue_style(
